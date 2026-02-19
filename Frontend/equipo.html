@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipo - Harmony</title>
+    <link rel="stylesheet" href="menu.css">
+    </head>
+<body>
+    <header class="navbar">
+         <div class="logo-container">
+        <img src="flor-logo.png" alt="Harmony Isotipo" class="brand-logo">
+        
+        <div class="brand-text">
+            <h1 class="brand-name">HARMONY</h1>
+            <p class="brand-tagline">ESTÉTICA Y SPA</p>
+        </div>
+        </div>
+        
+        <nav>
+            <ul class="nav-links">
+                <li><a href="index.html">INICIO</a></li>
+                <li><a href="servicios.html">Servicios</a></li>
+                <li><a href="equipo.html">Equipo</a></li>
+                <li><a href="vouchers.html">VOUCHERS </a></li>
+                <li><a href="https://www.instagram.com/harmony.maguiveron" target="_blank" class="ig-link">INSTAGRAM</a></li>
+
+                <li class="login-item">
+                <a href="#" class="login-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </a>
+            </li>
+            </ul>
+        </nav>
+        </a>
+    </div>
+    </header>
+    <section style="text-align: center; padding-top: 50px;">
+        <h2 class="hero-title" style="color: var(--texto-dark); font-size: 2.5rem;">Nuestro Equipo</h2>
+        <p style="color: var(--dorado-mate)">PROFESIONALES A TU SERVICIO</p>
+    </section>
+
+    <main class="team-container">
+    <div class="team-card">
+        <img src="https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?q=80&w=400" alt="Juan Chinetti" class="team-img">
+        <h3>Juan Chinetti</h3>
+        <p class="specialty">Especialista en Mesoterapia</p>
+        <button class="btn-luxury-dark" onclick="abrirCalendario('Juan')">DISPONIBILIDAD</button>
+    </div>
+
+    <div class="team-card">
+        <img src="https://images.unsplash.com/photo-1559599101-f09722fb4948?q=80&w=400" alt="Mateo Villarroel" class="team-img">
+        <h3>Mateo Villarroel</h3>
+        <p class="specialty">Estética Facial y Uñas</p>
+        <button class="btn-luxury-dark" onclick="abrirCalendario('Mateo')">DISPONIBILIDAD</button>
+    </div>
+</main>
+
+     <div style="position: fixed; bottom: 30px; left: 30px; display: flex; flex-direction: column; gap: 15px; z-index: 1000;">
+    
+    <button class="btn-luxury-dark" onclick="abrirAdminHistorial()" 
+            style="background: #a6835a; padding: 10px 20px; border-radius: 30px; font-size: 0.8rem; box-shadow: 0 4px 15px rgba(0,0,0,0.2); white-space: nowrap;">
+         REPORTE GLOBAL
+    </button>
+
+    <div id="adminAddBtn" title="Agregar Empleado"
+         style="width: 60px; height: 60px; background-color: var(--texto-dark); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.3s; align-self: flex-start;">
+        +
+    </div>
+    
+</div>
+
+    <div id="modalNuevoEmpleado" class="modal">
+    <div class="modal-content" style="max-width: 400px; border-radius: 20px;">
+        <h3 style="font-family: 'Forum', serif;">Nuevo Profesional</h3>
+        <p class="brand-tagline">REGISTRO DE EQUIPO</p>
+        
+        <form id="formNuevoEmpleado" style="margin-top: 20px; text-align: left;">
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.8rem;">NOMBRE COMPLETO</label>
+                <input type="text" id="addNombre" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.8rem;">SERVICIOS / ESPECIALIDAD (Separados por coma)</label>
+                <input type="text" id="addServicios" placeholder="Ej: Facial, Limpieza, Uñas" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                <small style="font-size: 0.65rem; color: #a6835a;">Escribe los servicios que ofrece para que el cliente pueda encontrarlo.</small>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 15px;">
+    <label style="display: block; color: #a6835a; margin-bottom: 5px;">EMAIL:</label>
+    <input type="email" id="nuevoEmail" placeholder="ejemplo@correo.com" 
+           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 12px; font-size: 0.9rem;">
+</div>
+
+<div class="form-group" style="margin-bottom: 15px;">
+    <label style="display: block; color: #a6835a; margin-bottom: 5px;">TELÉFONO:</label>
+    <input type="tel" id="nuevoTelefono" placeholder="+54 9 11..." 
+           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 12px; font-size: 0.9rem;">
+</div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="font-size: 0.8rem;">FOTO DEL PROFESIONAL</label>
+                <input type="file" id="addImagen" accept="image/*" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white;">
+            </div>
+            <button type="submit" class="btn-luxury-dark" style="width: 100%;">REGISTRAR PROFESIONAL</button>
+        </form>
+        
+        <button id="btnCerrarRegistro" style="background: none; border: none; margin-top: 15px; cursor: pointer; color: #888; text-decoration: underline; font-size: 0.75rem;">Cancelar</button>
+    </div>
+</div>
+
+    <div id="modalEditarEmpleado" class="modal">
+        <div class="modal-content" style="max-width: 400px; border-radius: 20px;">
+            <h3 style="font-family: 'Forum', serif;">Editar Profesional</h3>
+            <p class="brand-tagline">ACTUALIZAR DATOS</p>
+            
+            <form id="formEditarEmpleado" style="margin-top: 20px; text-align: left;">
+                <input type="hidden" id="editNombreOriginal"> 
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size: 0.8rem;">NOMBRE COMPLETO</label>
+                    <input type="text" id="editNombre" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size: 0.8rem;">ESPECIALIDAD</label>
+                    <input type="text" id="editEspecialidad" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+    <label style="display: block; color: #a6835a; margin-bottom: 5px;">EMAIL:</label>
+    <input type="email" id="editEmail" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 12px;">
+</div>
+
+<div class="form-group" style="margin-bottom: 15px;">
+    <label style="display: block; color: #a6835a; margin-bottom: 5px;">TELÉFONO:</label>
+    <input type="tel" id="editTelefono" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 12px;">
+</div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="font-size: 0.8rem;">CAMBIAR FOTO (Opcional)</label>
+                    <input type="file" id="editImagen" accept="image/*" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white;">
+                </div>
+                <div style="margin-bottom: 20px;">
+    <label style="font-size: 0.8rem; color: var(--texto-dark); font-weight: bold;">ESTADO DISPONIBILIDAD</label>
+    <select id="editEstado" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: white; cursor: pointer; font-family: 'Montserrat', sans-serif;">
+        <option value="true">✅ ACTIVO (Disponible)</option>
+        <option value="false">🚫 INACTIVO (Fuera de servicio)</option>
+    </select>
+</div>
+                <button type="submit" class="btn-luxury-dark" style="width: 100%;">GUARDAR CAMBIOS</button>
+            </form>
+            
+            <button id="btnCerrarEditar" style="background: none; border: none; margin-top: 15px; cursor: pointer; color: #888; text-decoration: underline; font-size: 0.75rem;">Cancelar</button>
+        </div>
+    </div>
+
+    <!--Parte del login-->
+    <div id="modalLogin" class="modal">
+    <div class="modal-content">
+        <h3>Iniciar Sesión</h3>
+        <p class="brand-tagline">HARMONY ESTÉTICA Y SPA</p>
+        
+        <form id="loginForm" style="margin-top: 20px;">
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label style="font-size: 0.8rem; letter-spacing: 1px;">EMAIL</label>
+                <input type="email" id="loginEmail" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+            <div style="margin-bottom: 20px; text-align: left;">
+                <label style="font-size: 0.8rem; letter-spacing: 1px;">CONTRASEÑA</label>
+                <input type="password" id="loginPass" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+            <button type="submit" class="btn-luxury-dark" style="width: 100%;">INGRESAR</button>
+        </form>
+        
+        <p id="errorLogin" style="color: #c0392b; font-size: 0.8rem; margin-top: 15px; display: none;">Usuario o contraseña incorrectos.</p>
+        
+        <button id="btnCerrarLogin" style="background: none; border: none; margin-top: 15px; cursor: pointer; color: #888; text-decoration: underline; font-size: 0.75rem;">Cerrar</button>
+    </div>
+    </div>
+
+    <div id="modalCalendario" class="modal">
+    <div class="modal-content" style="max-width: 380px;">
+        <h3 id="nombreProfesional" style="font-family: 'Forum', serif; color: var(--dorado-suave);"></h3>
+        <p class="brand-tagline">SELECCIONÁ UN DÍA</p>
+        
+        <div class="mini-calendar" id="contenedorDias">
+            </div>
+
+        <div id="selectorHorarios" class="horarios-container" style="display: none;">
+            <p style="font-size: 0.8rem; margin: 15px 0 10px;">Turnos disponibles:</p>
+            <div class="grid-horarios" id="gridHorarios">
+                </div>
+        </div>
+        
+        <button type="button" 
+        class="btn-luxury-dark" 
+        id="btnConfirmarTurno" 
+        style="width: 100%; margin-top: 20px; display: none;" 
+        onclick="confirmarYReservar(event)">
+    RESERVAR ESTE TURNO
+</button>
+        
+        <button onclick="cerrarCalendario()" style="background: none; border: none; margin-top: 15px; cursor: pointer; color: #888; text-decoration: underline;">Cerrar</button>
+    </div>
+</div>
+
+    <div id="modalPagoSena" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <h3 style="font-family: 'Playfair Display', serif; color: var(--texto-dark);">Reserva de Turno</h3>
+        <p style="font-size: 0.9rem; margin: 15px 0;">Para confirmar tu cita, es necesario realizar el pago de la seña.</p>
+        
+        <div style="background: var(--beige-premium); padding: 20px; border-radius: 10px; text-align: left; border: 1px solid var(--acento-soft);">
+            <p style="font-size: 0.8rem; font-weight: bold; color: var(--dorado-mate); margin-bottom: 5px;">DATOS DE TRANSFERENCIA:</p>
+            <p style="font-size: 0.9rem;"><strong>Alias:</strong> harmony.spa.pagos</p>
+            <p style="font-size: 0.9rem;"><strong>CVU:</strong> 0000003100012345678901</p>
+            <p style="font-size: 0.9rem;"><strong>Monto Seña:</strong> <span id="montoSenaText">$5.000</span></p>
+        </div>
+
+        <p style="font-size: 0.75rem; margin-top: 15px; color: #888;">Una vez realizada la transferencia, haz clic en el botón para enviar el comprobante y finalizar.</p>
+        
+        <button onclick="confirmarYEnviarWhatsApp()" class="btn-luxury-dark" style="width: 100%; margin-top: 20px;">
+            YA REALICÉ EL PAGO
+        </button>
+        <button onclick="document.getElementById('modalPagoSena').style.display='none'" style="background:none; border:none; color:#888; text-decoration:underline; cursor:pointer; margin-top:10px; font-size:0.8rem;">Cancelar</button>
+    </div>
+</div>
+
+<div id="modalResumenTurno" class="modal">
+    <div class="modal-content" style="max-width: 450px; border: 2px solid var(--dorado-mate);">
+        <div style="font-size: 3rem; color: var(--dorado-mate);">✓</div>
+        <h3 style="font-family: 'Playfair Display', serif;">¡Turno Solicitado!</h3>
+        <div id="detalleResumen" style="text-align: left; margin: 20px 0; line-height: 1.8;">
+            </div>
+        <button onclick="location.reload()" class="btn-luxury-dark">FINALIZAR</button>
+    </div>
+</div>
+
+<div id="modalGestionHorarios" class="modal">
+    <div class="modal-content" style="max-width: 400px; border-top: 3px solid var(--dorado-mate);">
+        <h3 style="font-family: 'Forum', serif;">Gestionar Agenda</h3>
+        <p id="nombreProGestion" style="color: var(--dorado-mate); font-size: 0.9rem; margin-bottom: 20px;"></p>
+
+        <div style="display: flex; flex-direction: column; gap: 10px; text-align: left;">
+            <label style="font-size: 0.8rem;">1. Seleccioná el día:</label>
+            <input type="date" id="fechaGestion" class="input-luxury" style="width: 100%;">
+
+            <label style="font-size: 0.8rem;">2. Escribí la hora (ej: 14:30):</label>
+            <div style="display: flex; gap: 10px;">
+                <input type="time" id="horaGestion" class="input-luxury" style="flex: 1;">
+                <button onclick="agregarHoraLista()" class="btn-luxury-dark" style="padding: 10px 20px;">+</button>
+            </div>
+        </div>
+
+        <div id="listaHorariosDia" style="margin-top: 20px; max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 5px;">
+            <p style="font-size: 0.7rem; color: #888;">No hay horarios cargados para esta fecha.</p>
+        </div>
+
+        <button onclick="cerrarGestionHorarios()" class="btn-luxury-dark" style="width: 100%; margin-top: 20px;">GUARDAR CAMBIOS</button>
+    </div>
+</div>
+
+<div id="modalPreConfirmacion" class="modal">
+    <div class="modal-content" style="max-width: 400px; border-left: 5px solid var(--dorado-mate);">
+        <h3 style="font-family: 'Playfair Display', serif; color: var(--texto-dark);">Verifica tu Turno</h3>
+        <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">Por favor, confirma que los datos de tu cita son correctos antes de proceder al pago.</p>
+        
+        <div id="resumenVerificacion" style="background: #fdfdfd; padding: 15px; border-radius: 8px; text-align: left; border: 1px solid #eee; font-size: 0.95rem;">
+            </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button onclick="cerrarPreConfirmacion()" style="flex:1; background:#f4f4f4; border:none; padding:12px; border-radius:5px; cursor:pointer; font-size: 0.8rem; font-weight: bold;">
+                MODIFICAR
+            </button>
+            <button onclick="procederAlPago()" class="btn-luxury-dark" style="flex:2; padding:12px;">
+                ES CORRECTO
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="modalHistorial" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <h2 id="tituloHistorial" style="color: #a6835a; margin-bottom: 15px;">Agenda de Turnos</h2>
+        
+        <div id="listaTurnosEspecialista" style="max-height: 400px; overflow-y: auto;">
+            </div>
+
+        <button class="btn-luxury-dark" onclick="cerrarHistorial()" style="margin-top: 20px; width: 100%;">CERRAR</button>
+    </div>
+</div>
+
+<div id="modalDatosCliente" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <h2 style="color: #a6835a;">Datos de contacto</h2>
+        <p style="font-size: 0.8rem; color: #888; margin-bottom: 15px;">Necesitamos tu nombre y teléfono para agendar el turno.</p>
+        
+        <input type="text" id="inputNombreCliente" placeholder="Tu nombre completo" 
+               style="width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 8px;">
+        
+        <input type="tel" id="inputTelCliente" placeholder="Tu teléfono (WhatsApp)" 
+               style="width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px;">
+
+        <button class="btn-luxury-dark" onclick="validarYPasarAlPago()" style="width: 100%;">
+            CONTINUAR AL PAGO
+        </button>
+    </div>
+</div>
+
+<div id="modalAdminHistorial" class="modal">
+    <div class="modal-content" style="max-width: 900px; width: 95%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="color: #a6835a; margin: 0;">Panel de Control de Turnos</h2>
+            <button class="btn-luxury-dark" onclick="cerrarAdminHistorial()" style="padding: 5px 15px;">✕</button>
+        </div>
+
+        <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+            <input type="text" id="filtroAdminBusqueda" placeholder="Buscar por cliente o especialista..." 
+                   onkeyup="renderizarAdminHistorial()" 
+                   style="padding: 8px; border-radius: 5px; border: 1px solid #ddd; flex: 1;">
+        </div>
+
+        <div style="overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; text-align: left;">
+                <thead style="background: #f8f5f2; color: #a6835a; border-bottom: 2px solid #e0d1bc;">
+                    <tr>
+                        <th style="padding: 12px;">Fecha/Hora</th>
+                        <th style="padding: 12px;">Cliente</th>
+                        <th style="padding: 12px;">Especialista</th>
+                        <th style="padding: 12px;">Servicio</th>
+                        <th style="padding: 12px;">Estado Pago</th>
+                        <th style="padding: 12px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaAdminReservas">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="/Backend/menu.js"></script>
+
+</body>
+</html>

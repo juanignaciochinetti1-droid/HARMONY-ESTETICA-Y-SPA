@@ -1,0 +1,168 @@
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servicios - Harmony Estética y Spa</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="menu.css">
+    </head>
+<body>
+
+    <header class="navbar">
+         <div class="logo-container">
+        <img src="flor-logo.png" alt="Harmony Isotipo" class="brand-logo">
+        
+        <div class="brand-text">
+            <h1 class="brand-name">HARMONY</h1>
+            <p class="brand-tagline">ESTÉTICA Y SPA</p>
+        </div>
+        </div>
+        </div>
+        
+        <nav>
+            <ul class="nav-links">
+                <li><a href="index.html">INICIO</a></li>
+                <li><a href="servicios.html">Servicios</a></li>
+                <li><a href="equipo.html">Equipo</a></li>
+                <li><a href="vouchers.html">VOUCHERS </a></li>
+                <li><a href="https://www.instagram.com/harmony.maguiveron" target="_blank" class="ig-link">INSTAGRAM</a></li>
+
+                <li class="login-item">
+                <a href="#" class="login-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </a>
+            </li>
+            </ul>
+        </nav>
+        </a>
+    </div>
+    </header>
+
+    <section style="text-align: center; padding: 3rem 5% 1rem;">
+        <h2 style="font-family: 'Playfair Display', serif; font-size: 2.5rem;">Nuestros Servicios</h2>
+        <p style="color: var(--dorado-mate); letter-spacing: 2px; font-size: 0.8rem; text-transform: uppercase;">
+            Reserva con el 30% de seña
+        </p>
+    </section>
+
+    <main class="services-container">
+        
+        <div class="service-card">
+            <h3>Uñas</h3>
+            <p>Manicuría de alta gama con esmaltado semipermanente, cuidado de cutículas y exfoliación para unas manos impecables.</p>
+            <span class="service-info"><strong>Duración:</strong> 75 min</span>
+            <span class="price">$15.000</span>
+<button class="btn-luxury-dark" data-servicio="Uñas" onclick="abrirSeleccionEspecialista('Uñas')">
+    Reservar Turno
+</button>
+        <div class="service-card">
+            <h3>Facial</h3>
+            <p>Limpieza profunda con activos premium que hidratan y regeneran las capas de la piel, devolviendo el brillo natural.</p>
+            <span class="service-info"><strong>Duración:</strong> 60 min</span>
+            <span class="price">$22.000</span>
+<button class="btn-luxury-dark" data-servicio="Facial" onclick="abrirSeleccionEspecialista('Facial')">Reservar Turno</button>        </div>
+
+        <div class="service-card">
+            <h3>Mesoterapia</h3>
+            <p>Tratamiento mínimamente invasivo que aplica vitaminas y minerales para combatir la flacidez y revitalizar el tejido.</p>
+            <span class="service-info"><strong>Duración:</strong> 45 min</span>
+            <span class="price">$30.000</span>
+           <button class="btn-luxury-dark" data-servicio="Mesoterapia" onclick="abrirSeleccionEspecialista('Mesoterapia')">Reservar Turno</button>
+        </div>
+    </main>
+
+    <div id="modalEspecialistas" class="modal">
+    <div class="modal-content">
+        <h3 id="tituloServicioElegido">Elegir Especialista</h3>
+        <p style="font-size: 0.8rem; color: var(--dorado-mate); margin-bottom: 20px;">Selecciona con quién prefieres atenderte</p>
+        
+        <div id="contenedorEspecialistas" class="grid-especialistas">
+            </div>
+
+        <button id="btnCerrarEspecialistas" style="background: none; border: none; margin-top: 15px; cursor: pointer; color: #888; text-decoration: underline; font-size: 0.75rem;">Volver atrás</button>
+    </div>
+</div>
+
+    <div id="modalLogin" class="modal">
+    <div class="modal-content">
+        <h3>Iniciar Sesión</h3>
+        <p class="brand-tagline">HARMONY ESTÉTICA Y SPA</p>
+        
+        <form id="loginForm" style="margin-top: 20px;">
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label style="font-size: 0.8rem; letter-spacing: 1px;">EMAIL</label>
+                <input type="email" id="loginEmail" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+            <div style="margin-bottom: 20px; text-align: left;">
+                <label style="font-size: 0.8rem; letter-spacing: 1px;">CONTRASEÑA</label>
+                <input type="password" id="loginPass" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+            <button type="submit" class="btn-luxury-dark" style="width: 100%;">INGRESAR</button>
+        </form>
+        
+        <p id="errorLogin" style="color: #c0392b; font-size: 0.8rem; margin-top: 15px; display: none;">Usuario o contraseña incorrectos.</p>
+        
+        <button id="btnCerrarLogin" style="background: none; border: none; margin-top: 15px; cursor: pointer; color: #888; text-decoration: underline; font-size: 0.75rem;">Cerrar</button>
+    </div>
+</div>
+
+<div id="adminAddServiceBtn" 
+     style="position: fixed; bottom: 30px; left: 30px; width: 60px; height: 60px; 
+            background-color: #a6835a; color: white; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 30px; cursor: pointer; z-index: 1000; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s;"
+     onmouseover="this.style.transform='scale(1.1)'" 
+     onmouseout="this.style.transform='scale(1)'">
+    +
+</div>
+
+<div id="modalServicio" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <h3 id="tituloModalServicio">Nuevo Servicio</h3>
+        <form id="formServicio" style="margin-top: 20px; text-align: left;">
+            <input type="hidden" id="serviceId">
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.8rem;">NOMBRE DEL SERVICIO</label>
+                <input type="text" id="serviceName" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.8rem;">DESCRIPCIÓN</label>
+                <textarea id="serviceDesc" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; height: 80px;"></textarea>
+            </div>
+            <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <label style="font-size: 0.8rem;">DURACIÓN (min)</label>
+                    <input type="number" id="serviceDuration" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-size: 0.8rem;">PRECIO ($)</label>
+                    <input type="text" id="servicePrice" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                </div>
+            </div>
+            <button type="submit" class="btn-luxury-dark" style="width: 100%;">GUARDAR SERVICIO</button>
+        </form>
+        <button onclick="document.getElementById('modalServicio').style.display='none'" style="background: none; border: none; margin-top: 15px; cursor: pointer; color: #888; text-decoration: underline;">Cancelar</button>
+    </div>
+</div>
+
+    <section style="background-color: var(--blanco-puro); padding: 3rem 5%; text-align: center; border-top: 1px solid #eee;">
+        <div style="max-width: 600px; margin: 0 auto;">
+            <h4 style="font-family: 'Playfair Display', serif; margin-bottom: 15px;">Información de Reserva</h4>
+            <ul class="lista-politicas" style="display: inline-block; text-align: left;">
+                <li>El turno se confirma únicamente con la seña del 30%.</li>
+                <li>Cambios o cancelaciones hasta 24 hs antes.</li>
+                <li>La seña no es reembolsable fuera del plazo establecido.</li>
+            </ul>
+        </div>
+    </section>
+
+    <footer style="text-align: center; padding: 2rem; font-size: 0.7rem; letter-spacing: 1px; color: #999;">
+        &copy; 2026 HARMONY ESTÉTICA Y SPA. Desarrollado por Juan Chinetti y Mateo Villarroel.
+    </footer>
+<script src="/Backend/menu.js"></script>
+</body>
+</html>

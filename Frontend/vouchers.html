@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vouchers - Harmony Estética y Spa</title>
+    <link rel="stylesheet" href="menu.css">
+</head>
+<body>
+
+     <header class="navbar">
+         <div class="logo-container">
+        <img src="flor-logo.png" alt="Harmony Isotipo" class="brand-logo">
+        
+        <div class="brand-text">
+            <h1 class="brand-name">HARMONY</h1>
+            <p class="brand-tagline">ESTÉTICA Y SPA</p>
+        </div>
+        </div>
+        
+        <nav>
+            <ul class="nav-links">
+                <li><a href="index.html">INICIO</a></li>
+                <li><a href="servicios.html">Servicios</a></li>
+                <li><a href="equipo.html">Equipo</a></li>
+                <li><a href="vouchers.html">VOUCHERS </a></li>
+                <li><a href="https://www.instagram.com/harmony.maguiveron" target="_blank" class="ig-link">INSTAGRAM</a></li>
+
+                <li class="login-item">
+                <a href="#" class="login-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </a>
+            </li>
+            </ul>
+        </nav>
+        </a>
+    </div>
+    </header>
+
+    <section style="text-align: center; padding: 4rem 5% 1rem;">
+        <h2 class="hero-title" style="color: var(--texto-dark); font-size: 2.8rem;">Regala Bienestar</h2>
+        <p style="color: var(--dorado-mate); letter-spacing: 3px; font-size: 0.8rem; text-transform: uppercase;">
+            Vouchers de Regalo Personalizados 
+        </p>
+    </section>
+
+    <main class="vouchers-container">
+        <div class="voucher-card">
+            <h3 class="voucher-title">Relajación</h3>
+            <span class="voucher-price">$18.000</span>
+            <ul class="voucher-features">
+                <li>1 Sesión de Facial Profunda</li>
+                <li>Tratamiento de Hidratación</li>
+                <li>Validez por 30 días</li>
+            </ul>
+            <button class="btn-luxury-dark btn-comprar-voucher" data-plan="Relajación" data-precio="18.000" style="width: 100%;">COMPRAR VOUCHER</button>
+            <p class="voucher-footer">Requiere seña del 30% para activar</p>
+        </div>
+
+        <div class="voucher-card" style="border-color: var(--dorado-mate);">
+            <h3 class="voucher-title">Belleza Total</h3>
+            <span class="voucher-price">$28.000</span>
+            <ul class="voucher-features">
+                <li>Estética de Uñas Completa</li>
+                <li>Limpieza Facial Express</li>
+                <li>Validez por 45 días</li>
+            </ul>
+            <button class="btn-luxury-dark btn-comprar-voucher" data-plan="Belleza Total" data-precio="28.000" style="width: 100%;">COMPRAR VOUCHER</button>
+            <p class="voucher-footer">Sujeto a políticas de cancelación</p>
+        </div>
+
+        <div class="voucher-card">
+            <h3 class="voucher-title">Premium</h3>
+            <span class="voucher-price">$45.000</span>
+            <ul class="voucher-features">
+                <li>Sesión de Mesoterapia</li>
+                <li>Tratamiento Facial Premium</li>
+                <li>Validez por 60 días</li>
+            </ul>
+            <button class="btn-luxury-dark btn-comprar-voucher" data-plan="Premium" data-precio="45.000" style="width: 100%;">COMPRAR VOUCHER</button>
+            <p class="voucher-footer">Cambios hasta 24 hs antes</p>
+        </div>
+    </main>
+
+        <div id="adminAddVoucherBtn" style="position: fixed; bottom: 30px; left: 30px; width: 60px; height: 60px; background-color: #a6835a; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; cursor: pointer; z-index: 1000;">
+    +
+</div>
+
+<div id="modalGestionVoucher" class="modal" style="display: none; align-items: center; justify-content: center;">
+    <div class="modal-content" style="max-width: 400px; padding: 25px;">
+        <h3 style="font-family: 'Playfair Display', serif; margin-bottom: 20px;">Gestionar Voucher</h3>
+        
+        <form id="formGestionVoucher">
+            <input type="hidden" id="gestionId">
+            
+            <div style="text-align: left; margin-bottom: 12px;">
+                <label style="font-size: 0.7rem;">NOMBRE DEL PLAN</label>
+                <input type="text" id="gestNombre" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+
+            <div style="text-align: left; margin-bottom: 12px;">
+                <label style="font-size: 0.7rem;">PRECIO ($)</label>
+                <input type="text" id="gestPrecio" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+
+            <div style="text-align: left; margin-bottom: 12px;">
+                <label style="font-size: 0.7rem;">BENEFICIOS (Separados por coma)</label>
+                <textarea id="gestFeatures" placeholder="Ej: Facial profundo, Hidratación" required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; height: 80px; resize: none;"></textarea>
+            </div>
+
+            <div style="text-align: left; margin-bottom: 20px;">
+                <label style="font-size: 0.7rem;">PIE DE TARJETA (Footer)</label>
+                <input type="text" id="gestFooter" placeholder="Ej: Requiere seña del 30%" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+
+            <button type="submit" class="btn-luxury-dark" style="width: 100%; margin-bottom: 10px;">GUARDAR VOUCHER</button>
+        </form>
+        
+        <button onclick="document.getElementById('modalGestionVoucher').style.display='none'" style="background: none; border: none; cursor: pointer; color: #888; text-decoration: underline; font-size: 0.75rem;">Cerrar sin guardar</button>
+    </div>
+</div>
+
+    <div id="modalVoucher" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <h3 id="tituloVoucherModal" style="font-family: 'Playfair Display', serif; color: var(--dorado-mate);">Personalizar Regalo</h3>
+        <p style="font-size: 0.8rem; margin-bottom: 20px;">Completa los datos para el voucher digital</p>
+
+        <form id="formVoucher">
+            <div style="text-align: left; margin-bottom: 15px;">
+                <label style="font-size: 0.75rem; letter-spacing: 1px;">PARA: (Nombre del agasajado)</label>
+                <input type="text" id="voucherPara" placeholder="Ej: Ana García" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+            
+            <div style="text-align: left; margin-bottom: 15px;">
+                <label style="font-size: 0.75rem; letter-spacing: 1px;">DE: (Tu nombre)</label>
+                <input type="text" id="voucherDe" placeholder="Ej: Tu amiga Lucía" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+
+            <div style="text-align: left; margin-bottom: 20px;">
+                <label style="font-size: 0.75rem; letter-spacing: 1px;">MENSAJE ESPECIAL:</label>
+                <textarea id="voucherMensaje" placeholder="¡Feliz cumple! Disfrutá tu momento..." style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 5px; height: 80px; resize: none;"></textarea>
+            </div>
+
+            <button type="submit" class="btn-luxury-dark" style="width: 100%;">GENERAR Y ENVIAR</button>
+        </form>
+        
+        <button onclick="cerrarModalVoucher()" style="background: none; border: none; margin-top: 15px; cursor: pointer; color: #888; text-decoration: underline; font-size: 0.75rem;">Cancelar</button>
+    </div>
+</div>
+
+    <div id="modalLogin" class="modal">
+    <div class="modal-content">
+        <h3>Iniciar Sesión</h3>
+        <p class="brand-tagline">HARMONY ESTÉTICA Y SPA</p>
+        
+        <form id="loginForm" style="margin-top: 20px;">
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label style="font-size: 0.8rem; letter-spacing: 1px;">EMAIL</label>
+                <input type="email" id="loginEmail" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+            <div style="margin-bottom: 20px; text-align: left;">
+                <label style="font-size: 0.8rem; letter-spacing: 1px;">CONTRASEÑA</label>
+                <input type="password" id="loginPass" required style="width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 5px;">
+            </div>
+            <button type="submit" class="btn-luxury-dark" style="width: 100%;">INGRESAR</button>
+        </form>
+        
+        <p id="errorLogin" style="color: #c0392b; font-size: 0.8rem; margin-top: 15px; display: none;">Usuario o contraseña incorrectos.</p>
+        
+        <button id="btnCerrarLogin" style="background: none; border: none; margin-top: 15px; cursor: pointer; color: #888; text-decoration: underline; font-size: 0.75rem;">Cerrar</button>
+    </div>
+</div>
+
+    <footer style="text-align: center; padding: 4rem 5%; background-color: var(--blanco-puro); border-top: 1px solid #eee;">
+        <p style="font-size: 0.8rem; color: #666;">
+            &copy; 2026 Harmony Estética y Spa. Los vouchers no son reembolsables tras su vencimiento[cite: 23].
+        </p>
+    </footer>
+<script src="/Backend/menu.js"></script>
+</body>
+</html>
