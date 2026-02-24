@@ -17,7 +17,7 @@ const styles = {
     height: '100vh', 
     width: '100%',
     // Asegúrate de que el nombre del archivo en la carpeta public sea exactamente este
-    backgroundImage: 'url("/fondo-home.jpg")',
+    backgroundImage: 'url("/toallas.jpg")',
     
     /* 1. ESTO EVITA EL PIXELADO EN PANTALLAS GRANDES */
     backgroundSize: 'cover', 
