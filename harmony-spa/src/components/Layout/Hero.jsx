@@ -14,31 +14,56 @@ const Hero = () => {
 
 const styles = {
   heroContainer: {
-    height: '60vh',
-    backgroundImage: 'url("/toallaycrema.jpg")', // Asegúrate que el nombre coincida
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
+    height: '100vh', 
+    width: '100%',
+    // Asegúrate de que el nombre del archivo en la carpeta public sea exactamente este
+    backgroundImage: 'url("/fondo-home.jpg")',
+    
+    /* 1. ESTO EVITA EL PIXELADO EN PANTALLAS GRANDES */
+    backgroundSize: 'cover', 
+    backgroundPosition: 'center center', 
+    backgroundRepeat: 'no-repeat',
+    imageRendering: 'auto', // Permite que el navegador suavice los bordes
+    
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     color: 'white',
     textAlign: 'center',
+    marginTop: '0', 
   },
   overlay: {
-    backgroundColor: 'rgba(0, 0, 0, 0.2)', // Un oscurecido suave para que se lea el texto
-    padding: '40px',
-    borderRadius: '10px',
+    /* 2. EFECTO GLASSMORFISMO (DESENFOQUE) */
+    // Esto hace que aunque la imagen sea un poco ruidosa, el fondo del texto se vea premium
+    backgroundColor: 'rgba(0, 0, 0, 0.3)', 
+    backdropFilter: 'blur(2px)', // Desenfoque sutil del fondo
+    padding: '50px',
+    borderRadius: '15px',
+    maxWidth: '85%',
   },
-  title: { fontSize: '3rem', fontWeight: '300', margin: '0 0 10px 0' },
-  subtitle: { fontSize: '1rem', marginBottom: '20px' },
+  title: { 
+    fontSize: 'clamp(2.2rem, 6vw, 4.5rem)', 
+    fontWeight: '300', 
+    margin: '0 0 15px 0',
+    fontFamily: "'Playfair Display', serif",
+    textShadow: '0px 4px 10px rgba(0,0,0,0.3)' // Sombra para separar el texto del fondo
+  },
+  subtitle: { 
+    fontSize: 'clamp(1rem, 2.5vw, 1.4rem)', 
+    marginBottom: '30px',
+    letterSpacing: '1px',
+    fontWeight: '300'
+  },
   button: {
-    padding: '10px 25px',
+    padding: '14px 35px',
     backgroundColor: 'transparent',
     color: 'white',
-    border: '1px solid white',
+    border: '1px solid rgba(255,255,255,0.8)',
     cursor: 'pointer',
-    fontSize: '0.8rem',
-    letterSpacing: '2px'
+    fontSize: '0.9rem',
+    letterSpacing: '2px',
+    transition: 'all 0.4s ease',
+    textTransform: 'uppercase'
   }
 };
 
