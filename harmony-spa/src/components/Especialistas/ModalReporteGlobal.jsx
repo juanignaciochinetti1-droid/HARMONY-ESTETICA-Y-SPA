@@ -9,10 +9,20 @@ const ModalReporteGlobal = ({ alCerrar }) => {
   const [cargando, setCargando] = useState(true);
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
+  
+  // NUEVOS ESTADOS: Paginación y Filtro de Estado
+  const [filtroEstado, setFiltroEstado] = useState("TODOS");
+  const [pagina, setPagina] = useState(1);
+  const itemsPorPagina = 8; // Número ideal para no hacer scroll
 
   useEffect(() => {
     obtenerReporteCompleto();
   }, []);
+
+  // Resetear a página 1 cuando se busca o filtra
+  useEffect(() => {
+    setPagina(1);
+  }, [busqueda, filtroEstado, fechaDesde, fechaHasta]);
 
   const obtenerReporteCompleto = async () => {
     const { data, error } = await supabase
@@ -40,31 +50,31 @@ const ModalReporteGlobal = ({ alCerrar }) => {
     }
   };
 
-  // --- LÓGICA DE FILTRADO ROBUSTA ---
+  // --- LÓGICA DE FILTRADO MEJORADA ---
   const turnosFiltrados = turnos.filter(t => {
-    // 1. Limpiamos términos de búsqueda
     const terminos = busqueda.toLowerCase().trim().split(/\s+/);
-    
-    // 2. Extraemos datos con "Encadenamiento Opcional (?.)" y "Fallback (|| '')"
-    // Esto evita que si un dato falta, la app se ponga en blanco.
     const nombreCli = `${t.cliente?.nombre || ''} ${t.cliente?.apellido || ''}`.toLowerCase();
     const nombreEsp = `${t.especialista?.nombre || ''} ${t.especialista?.apellido || ''}`.toLowerCase();
-    const nombreSer = (t.servicios?.nombre || 'sin servicio').toLowerCase();
+    const nombreSer = (t.servicios?.nombre || '').toLowerCase();
 
-    // 3. Verificamos coincidencia de texto
     const coincideTexto = terminos.every(term => 
-      nombreCli.includes(term) || 
-      nombreEsp.includes(term) || 
-      nombreSer.includes(term)
+      nombreCli.includes(term) || nombreEsp.includes(term) || nombreSer.includes(term)
     );
 
-    // 4. Verificamos coincidencia de fecha
-    const fechaTurno = t.fecha;
-    const coincideFecha = (!fechaDesde || fechaTurno >= fechaDesde) && 
-                         (!fechaHasta || fechaTurno <= fechaHasta);
+    const coincideFecha = (!fechaDesde || t.fecha >= fechaDesde) && 
+                         (!fechaHasta || t.fecha <= fechaHasta);
+    
+    // Nuevo: Filtro por Tab de Estado
+    const coincideEstado = filtroEstado === "TODOS" || t.estado === filtroEstado;
 
-    return coincideTexto && coincideFecha;
+    return coincideTexto && coincideFecha && coincideEstado;
   });
+
+  // --- LÓGICA DE PAGINACIÓN ---
+  const totalPaginas = Math.ceil(turnosFiltrados.length / itemsPorPagina);
+  const indiceUltimo = pagina * itemsPorPagina;
+  const indicePrimero = indiceUltimo - itemsPorPagina;
+  const turnosPaginados = turnosFiltrados.slice(indicePrimero, indiceUltimo);
 
   const exportarPDF = () => {
     const doc = new jsPDF();
@@ -92,22 +102,14 @@ const ModalReporteGlobal = ({ alCerrar }) => {
     });
 
     const finalY = doc.lastAutoTable.finalY;
-    doc.text(`TOTAL: $${totalIngresos.toLocaleString()}`, 14, finalY + 15);
+    doc.text(`TOTAL (CONFIRMADOS): $${totalIngresos.toLocaleString()}`, 14, finalY + 15);
     doc.save(`Reporte_Harmony.pdf`);
   };
-
-  // Validación: Nombre y apellido, teléfono largo y email con formato básico
-const camposCompletos = 
-  formData.nombre.trim().split(" ").length >= 2 && 
-  formData.telefono.trim().length >= 8 && 
-  formData.email.includes('@') && 
-  formData.email.includes('.');
 
   return (
     <div style={styles.overlay} onClick={alCerrar}>
       <div style={styles.modal} onClick={e => e.stopPropagation()}>
         
-        {/* HEADER CON FILTROS DE FECHA */}
         <div style={styles.header}>
           <div>
             <h2 style={styles.titulo}>Panel de Control Global</h2>
@@ -128,9 +130,27 @@ const camposCompletos =
           </div>
         </div>
 
+        {/* TABS DE FILTRADO RÁPIDO */}
+        <div style={styles.tabsContainer}>
+          {["TODOS", "PENDIENTE", "CONFIRMADO", "CANCELADO"].map(est => (
+            <button 
+              key={est}
+              onClick={() => setFiltroEstado(est)}
+              style={{
+                ...styles.tabBtn,
+                backgroundColor: filtroEstado === est ? '#a6835a' : 'transparent',
+                color: filtroEstado === est ? '#fff' : '#a6835a',
+                border: filtroEstado === est ? '1px solid #a6835a' : '1px solid #e2d5c5'
+              }}
+            >
+              {est}
+            </button>
+          ))}
+        </div>
+
         <input 
           type="text" 
-          placeholder="Buscar cliente, especialista o servicio..." 
+          placeholder="Buscar por cliente, empleado o servicio..." 
           style={styles.inputBusqueda}
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
@@ -139,57 +159,78 @@ const camposCompletos =
         {cargando ? (
           <div style={styles.loader}>Cargando...</div>
         ) : (
-          <div style={styles.tablaContenedor}>
-            <table style={styles.tabla}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>Fecha/Hora</th>
-                  <th style={styles.th}>Cliente</th>
-                  <th style={styles.th}>Especialista</th>
-                  <th style={styles.th}>Servicio</th>
-                  <th style={styles.th}>Estado</th>
-                  <th style={styles.th}>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {turnosFiltrados.map((t) => (
-                  <tr key={t.id} style={styles.tr}>
-                    <td style={styles.td}>
-                      <span style={styles.fecha}>{t.fecha}</span><br/>
-                      <span style={styles.hora}>{t.hora.substring(0,5)}hs</span>
-                    </td>
-                    <td style={styles.td}>
-                      <strong>{t.cliente?.nombre || 'S/N'} {t.cliente?.apellido || ''}</strong>
-                    </td>
-                    <td style={styles.td}>
-                      {t.especialista?.nombre || 'S/E'} {t.especialista?.apellido || ''}
-                    </td>
-                    <td style={styles.td}>{t.servicios?.nombre || 'N/A'}</td>
-                    <td style={styles.td}>
-                      <span style={{
-                        ...styles.statusBadge,
-                        backgroundColor: t.estado === 'COMPLETADO' ? '#e8f8f0' : (t.estado === 'CANCELADO' ? '#fdeaea' : '#f0f0f0'),
-                        color: t.estado === 'COMPLETADO' ? '#2ecc71' : (t.estado === 'CANCELADO' ? '#e74c3c' : '#7f8c8d')
-                      }}>
-                        {t.estado}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      <select 
-                        value={t.estado} 
-                        onChange={(e) => actualizarEstado(t.id, e.target.value)}
-                        style={styles.select}
-                      >
-                        <option value="PENDIENTE">Pendiente</option>
-                        <option value="CONFIRMADO">Confirmado</option>
-                        <option value="CANCELADO">Cancelado</option>
-                      </select>
-                    </td>
+          <>
+            <div style={styles.tablaContenedor}>
+              <table style={styles.tabla}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Fecha/Hora</th>
+                    <th style={styles.th}>Cliente</th>
+                    <th style={styles.th}>Especialista</th>
+                    <th style={styles.th}>Servicio</th>
+                    <th style={styles.th}>Estado</th>
+                    <th style={styles.th}>Acción</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {turnosPaginados.map((t) => (
+                    <tr key={t.id} style={styles.tr}>
+                      <td style={styles.td}>
+                        <span style={styles.fecha}>{t.fecha}</span><br/>
+                        <span style={styles.hora}>{t.hora.substring(0,5)}hs</span>
+                      </td>
+                      <td style={styles.td}>
+                        <strong>{t.cliente?.nombre || 'S/N'} {t.cliente?.apellido || ''}</strong>
+                      </td>
+                      <td style={styles.td}>
+                        {t.especialista?.nombre || 'S/E'} {t.especialista?.apellido || ''}
+                      </td>
+                      <td style={styles.td}>{t.servicios?.nombre || 'N/A'}</td>
+                      <td style={styles.td}>
+                        <span style={{
+                          ...styles.statusBadge,
+                          backgroundColor: t.estado === 'CONFIRMADO' ? '#e8f8f0' : (t.estado === 'CANCELADO' ? '#fdeaea' : '#f0f0f0'),
+                          color: t.estado === 'CONFIRMADO' ? '#2ecc71' : (t.estado === 'CANCELADO' ? '#e74c3c' : '#7f8c8d')
+                        }}>
+                          {t.estado}
+                        </span>
+                      </td>
+                      <td style={styles.td}>
+                        <select 
+                          value={t.estado} 
+                          onChange={(e) => actualizarEstado(t.id, e.target.value)}
+                          style={styles.select}
+                        >
+                          <option value="PENDIENTE">Pendiente</option>
+                          <option value="CONFIRMADO">Confirmado</option>
+                          <option value="CANCELADO">Cancelado</option>
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* CONTROLES DE PAGINACIÓN */}
+            <div style={styles.paginacionContainer}>
+              <button 
+                disabled={pagina === 1} 
+                onClick={() => setPagina(pagina - 1)}
+                style={{...styles.btnPag, opacity: pagina === 1 ? 0.4 : 1}}
+              >
+                Anterior
+              </button>
+              <span style={styles.infoPagina}>Página {pagina} de {totalPaginas || 1}</span>
+              <button 
+                disabled={pagina === totalPaginas || totalPaginas === 0} 
+                onClick={() => setPagina(pagina + 1)}
+                style={{...styles.btnPag, opacity: (pagina === totalPaginas || totalPaginas === 0) ? 0.4 : 1}}
+              >
+                Siguiente
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
