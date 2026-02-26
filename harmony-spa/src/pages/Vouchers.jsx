@@ -18,15 +18,19 @@ export default function Vouchers() {
 
   // 2. Cargar datos desde Supabase
   const obtenerVouchers = async () => {
-    const { data, error } = await supabase
-      .from('vouchers') // Asegúrate que tu tabla en Supabase se llame 'vouchers'
-      .select('*')
-      .order('id', { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from('vouchers_web')
+        .select('*')
+        .order('id', { ascending: true });
 
-    if (error) {
+      if (error) throw error;
+      
+      console.log("Datos recibidos de Supabase:", data); // Esto les dirá si llegan datos
+      setListaVouchers(data || []);
+    } catch (error) {
       console.error("Error al obtener vouchers:", error.message);
-    } else {
-      setListaVouchers(data);
+      alert("No se pudieron cargar los vouchers. Revisa la consola.");
     }
   };
 
@@ -37,31 +41,37 @@ export default function Vouchers() {
   // 3. Lógica Admin (Borrar y Guardar)
   const borrarVoucher = async (id) => {
     if (window.confirm("¿Deseas eliminar este voucher permanentemente?")) {
-      const { error } = await supabase.from('vouchers').delete().eq('id', id);
+      const { error } = await supabase.from('vouchers_web').delete().eq('id', id);
       if (!error) setListaVouchers(listaVouchers.filter(v => v.id !== id));
     }
   };
 
   const guardarCambios = async (datos) => {
-    // Los datos vienen procesados desde el ModalFormularioVoucher
-    if (voucherAEditar) {
-      const { data, error } = await supabase
-        .from('vouchers')
-        .update(datos)
-        .eq('id', voucherAEditar.id)
-        .select();
-      
-      if (!error) {
+    try {
+      if (voucherAEditar) {
+        // ACTUALIZAR
+        const { data, error } = await supabase
+          .from('vouchers_web')
+          .update(datos)
+          .eq('id', voucherAEditar.id)
+          .select();
+        
+        if (error) throw error;
         setListaVouchers(listaVouchers.map(v => v.id === voucherAEditar.id ? data[0] : v));
-        setFormAbierto(false);
-        setVoucherAEditar(null);
-      }
-    } else {
-      const { data, error } = await supabase.from('vouchers').insert([datos]).select();
-      if (!error) {
+      } else {
+        // INSERTAR NUEVO
+        const { data, error } = await supabase
+          .from('vouchers_web')
+          .insert([datos])
+          .select();
+        
+        if (error) throw error;
         setListaVouchers([...listaVouchers, data[0]]);
-        setFormAbierto(false);
       }
+      setFormAbierto(false);
+      setVoucherAEditar(null);
+    } catch (error) {
+      alert("Error al guardar: " + error.message);
     }
   };
 
