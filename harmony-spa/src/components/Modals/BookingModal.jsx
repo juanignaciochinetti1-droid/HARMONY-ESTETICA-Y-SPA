@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
-const BookingModal = ({ isOpen, onClose, selectedTurno, especialista, servicio }) => {
+// Antes: const BookingModal = ({ isOpen, onClose, selectedTurno, especialista, servicio }) => {
+// Después:
+const BookingModal = ({ isOpen, onClose, selectedTurno, especialista, servicio, onSuccess }) => {
   // 1. Hooks siempre arriba
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -17,52 +19,64 @@ const BookingModal = ({ isOpen, onClose, selectedTurno, especialista, servicio }
   if (!isOpen) return null;
 
   const handleFinalizarReserva = async () => {
-    setLoading(true);
-    try {
-      // 1. Lógica de Cliente: Buscar o Crear
-      let { data: cliente } = await supabase.from('users').select('id').eq('email', formData.email).single();
-      let clienteId = cliente?.id;
+  setLoading(true);
+  try {
+    // 1. Lógica de Cliente: Buscar
+    // Usamos maybeSingle() para que no dé error 406 si no existe
+    let { data: cliente, error: errorBusqueda } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', formData.email)
+      .maybeSingle();
 
-      if (!clienteId) {
-        const partes = formData.nombre.trim().split(" ");
-        const nombreSolo = partes[0];
-        const apellidoSolo = partes.slice(1).join(" ") || ".";
+    let clienteId = cliente?.id;
 
-        const { data: nuevo, error: eC } = await supabase.from('users')
-          .insert([{ 
-            nombre: nombreSolo, 
-            apellido: apellidoSolo, 
-            email: formData.email, 
-            telefono: formData.telefono, 
-            rol: 'CLIENTE',
-            password_hash: 'invitado_spa' // Para cumplir con el NOT NULL de tu BD
-          }])
-          .select().single();
-        
-        if (eC) throw eC;
-        clienteId = nuevo.id;
-      }
+    // 2. Si el cliente NO existe, lo creamos
+    if (!clienteId) {
+      const partes = formData.nombre.trim().split(" ");
+      const nombreSolo = partes[0] || "Cliente";
+      const apellidoSolo = partes.slice(1).join(" ") || "Nuevo";
 
-      // 2. Insertar el Turno
-      const { error: eT } = await supabase.from('turnos').insert([{
-        cliente_id: clienteId,
-        empleado_id: especialista.id,
-        servicio_id: servicio.id,
-        fecha: selectedTurno.fecha,
-        hora: selectedTurno.hora,
-        estado: 'PENDIENTE'
-      }]);
-
-      if (eT) throw eT;
-      setStep(3); 
-
-    } catch (e) {
-      console.error("Error completo:", e);
-      alert("Error al procesar: " + e.message);
-    } finally {
-      setLoading(false);
+      const { data: nuevo, error: errorCreacion } = await supabase
+        .from('users')
+        .insert([{ 
+          nombre: nombreSolo, 
+          apellido: apellidoSolo, 
+          email: formData.email, 
+          telefono: formData.telefono, 
+          rol: 'CLIENTE',
+          password_hash: 'invitado_spa', // Valor por defecto para el NOT NULL
+          activo: true 
+        }])
+        .select()
+        .single();
+      
+      if (errorCreacion) throw errorCreacion;
+      clienteId = nuevo.id;
     }
-  };
+
+    // 3. Insertar el Turno (ahora que tenemos el clienteId sí o sí)
+    const { error: errorTurno } = await supabase.from('turnos').insert([{
+      cliente_id: clienteId,
+      empleado_id: especialista.id,
+      servicio_id: servicio.id,
+      fecha: selectedTurno.fecha,
+      hora: selectedTurno.hora,
+      estado: 'PENDIENTE'
+    }]);
+
+    if (errorTurno) throw errorTurno;
+
+    // 4. Pasar al paso de éxito
+    setStep(3); 
+
+  } catch (e) {
+    console.error("Error completo:", e);
+    alert("No pudimos agendar tu turno: " + (e.message || "Error desconocido"));
+  } finally {
+    setLoading(false);
+  }
+};
 
   // --- CAMBIO AQUÍ: Función para cerrar todo al final ---
   const cerrarTodoAlFinalizar = () => {
@@ -72,6 +86,13 @@ const BookingModal = ({ isOpen, onClose, selectedTurno, especialista, servicio }
       onClose();
     }
   }
+
+  const generarLinkWhatsApp = () => {
+  const numeroTelefono = "543537XXXXXX"; // Tu número real aquí
+  const mensaje = `¡Hola Harmony! Soy ${formData.nombre}. Acabo de transferir la seña para mi turno de ${servicio?.nombre} (${selectedTurno?.fecha} a las ${selectedTurno?.hora}hs). ¡Adjunto el comprobante! ✨`;
+  
+  return `https://wa.me/${numeroTelefono}?text=${encodeURIComponent(mensaje)}`;
+};
 
   return (
     <div style={styles.overlay}>
@@ -117,14 +138,36 @@ const BookingModal = ({ isOpen, onClose, selectedTurno, especialista, servicio }
         )}
 
         {/* PASO 3: ÉXITO TOTAL */}
-        {step === 3 && (
-          <div style={{ ...styles.container, textAlign: 'center' }}>
-            <div style={styles.circuloExito}>✓</div>
-            <h2 style={styles.tituloDorado}>¡Reservado con Éxito!</h2>
-            <p style={styles.subtitulo}>Tu momento Harmony Spa está confirmado.</p>
-            <button style={styles.btnPrimario} onClick={onClose}>FINALIZAR</button>
-          </div>
-        )}
+{step === 3 && (
+  <div style={{ ...styles.container, textAlign: 'center' }}>
+    <div style={styles.circuloExito}>✓</div>
+    <h2 style={styles.tituloDorado}>¡Reserva Registrada!</h2>
+    <p style={styles.subtitulo}>Para confirmar tu turno, por favor realiza la transferencia de la seña:</p>
+
+    {/* CAJA DE DATOS BANCARIOS */}
+    <div style={styles.cajaBanco}>
+      <p style={styles.datoBanco}><strong>Alias:</strong> HARMONY.SPA.SPA</p>
+      <p style={styles.datoBanco}><strong>CBU:</strong> 00000031000XXXXXXXXX</p>
+      <p style={styles.datoBanco}><strong>Titular:</strong> Nombre del Administrador</p>
+      <div style={styles.montoSeña}>Monto seña: $5.000</div>
+    </div>
+
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
+      <a 
+        href={generarLinkWhatsApp()} 
+        target="_blank" 
+        rel="noopener noreferrer" 
+        style={styles.btnWhatsApp}
+      >
+        📱 ENVIAR COMPROBANTE POR WHATSAPP
+      </a>
+
+      <button style={styles.btnFinalizarSimple} onClick={cerrarTodoAlFinalizar}>
+        Ya envié el comprobante / Salir
+      </button>
+    </div>
+  </div>
+)}
 
       </div>
     </div>
@@ -143,7 +186,21 @@ const styles = {
   flexButtons: { display: 'flex', gap: '15px' },
   btnPrimario: { flex: 1, backgroundColor: '#a6835a', color: '#fff', border: 'none', padding: '14px', borderRadius: '30px', fontWeight: 'bold', cursor: 'pointer' },
   btnSecundario: { flex: 1, backgroundColor: '#f5f5f5', color: '#666', border: 'none', padding: '14px', borderRadius: '30px', fontWeight: 'bold', cursor: 'pointer' },
-  circuloExito: { width: '70px', height: '70px', borderRadius: '50%', backgroundColor: '#fdfbf9', border: '3px solid #a6835a', color: '#a6835a', fontSize: '2.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 20px' }
+  circuloExito: { width: '70px', height: '70px', borderRadius: '50%', backgroundColor: '#fdfbf9', border: '3px solid #a6835a', color: '#a6835a', fontSize: '2.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 20px' },circuloExito: {
+    width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#e8f5e9',
+    color: '#2e7d32', fontSize: '2rem', display: 'flex', alignItems: 'center',
+    justifyContent: 'center', margin: '0 auto 20px auto'
+  },
+  btnWhatsApp: {
+    backgroundColor: '#25D366', color: 'white', textDecoration: 'none',
+    padding: '15px 20px', borderRadius: '50px', fontWeight: 'bold',
+    fontSize: '0.9rem', boxShadow: '0 4px 15px rgba(37, 211, 102, 0.3)',
+    display: 'block', transition: '0.3s'
+  },
+  btnFinalizarSimple: {
+    background: 'none', border: 'none', color: '#8c6d4f', cursor: 'pointer',
+    fontSize: '0.8rem', textDecoration: 'underline'
+  }
 };
 
 export default BookingModal;
