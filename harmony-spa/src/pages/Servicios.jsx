@@ -97,7 +97,7 @@ export default function Servicios() {
   };
 
   return (
-    <main style={styles.container}>
+    <main id="seccion-servicios" style={styles.container}> 
       <header style={styles.header}>
         <h1 style={styles.tituloHeader}>Nuestros Servicios</h1>
         <p style={styles.subtituloHeader}>RESERVA CON EL 30% DE SEÑA</p>

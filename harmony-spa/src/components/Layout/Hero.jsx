@@ -30,6 +30,10 @@ const Hero = ({ alAceptarPoliticas }) => {
   // Función interna para cerrar modal y ejecutar el scroll
   const manejarAceptar = () => {
     setMostrarModal(false);
+    
+    // Cambiamos el hash para que el Home.js reaccione
+    window.location.hash = "servicios";
+
     if (alAceptarPoliticas) {
       alAceptarPoliticas();
     }
@@ -98,7 +102,7 @@ const Hero = ({ alAceptarPoliticas }) => {
             </div>
 
             <button 
-              onClick={manejarAceptar} // Se cambia a la nueva función que cierra y hace scroll
+              onClick={manejarAceptar} 
               style={styles.btnAceptarPoliticas}
               onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
               onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
