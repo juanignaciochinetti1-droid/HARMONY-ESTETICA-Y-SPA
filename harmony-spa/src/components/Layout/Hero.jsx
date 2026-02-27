@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-const Hero = () => {
+// Se agrega la prop 'alAceptarPoliticas' para manejar el scroll desde el componente padre
+const Hero = ({ alAceptarPoliticas }) => {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [indice, setIndice] = useState(0);
   const [fade, setFade] = useState(true);
@@ -25,6 +26,14 @@ const Hero = () => {
     }, 2500);
     return () => clearInterval(intervalo);
   }, [frases.length]);
+
+  // Función interna para cerrar modal y ejecutar el scroll
+  const manejarAceptar = () => {
+    setMostrarModal(false);
+    if (alAceptarPoliticas) {
+      alAceptarPoliticas();
+    }
+  };
 
   return (
     <div style={styles.heroContainer}>
@@ -89,7 +98,7 @@ const Hero = () => {
             </div>
 
             <button 
-              onClick={() => setMostrarModal(false)} 
+              onClick={manejarAceptar} // Se cambia a la nueva función que cierra y hace scroll
               style={styles.btnAceptarPoliticas}
               onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
               onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
@@ -130,7 +139,7 @@ const styles = {
     fontSize: '0.85rem', letterSpacing: '3px', transition: 'all 0.5s ease', textTransform: 'uppercase'
   },
 
-  /* --- ESTILOS DEL MODAL (BASADOS EN TU EJEMPLO) --- */
+  /* --- ESTILOS DEL MODAL --- */
   modalPoliticasOverlay: {
     position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
     backgroundColor: 'rgba(26, 26, 26, 0.85)', display: 'flex',
@@ -138,17 +147,17 @@ const styles = {
     backdropFilter: 'blur(8px)'
   },
   modalPoliticasCard: {
-    backgroundColor: '#f2ede4', // Beige Premium
+    backgroundColor: '#f2ede4',
     padding: '45px 50px', borderRadius: '15px', 
     maxWidth: '520px', width: '95%', textAlign: 'center', 
     boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
-    border: '1px solid #e9c4a6', // Acento Soft
+    border: '1px solid #e9c4a6',
   },
   modalHeader: {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px', marginBottom: '25px'
   },
   modalDecor: {
-    height: '1px', width: '30px', backgroundColor: '#c5bc8a' // Dorado Mate
+    height: '1px', width: '30px', backgroundColor: '#c5bc8a'
   },
   modalPoliticasTitle: { 
     fontFamily: "'Playfair Display', serif", fontSize: '2.2rem', 
