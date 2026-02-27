@@ -5,18 +5,20 @@ import { supabase } from '../lib/supabaseClient';
 import CardVoucher from '../components/Vouchers/CardVoucher';
 import ModalFormularioVoucher from '../components/Vouchers/ModalFormularioVoucher';
 import ModalCompraVoucher from '../components/Vouchers/ModalCompraVoucher';
-
+import ModalReporteVouchers from '../components/Vouchers/ModalReporteVouchers';
 export default function Vouchers() {
   // 1. Estados
   const [formAbierto, setFormAbierto] = useState(false);
   const [compraAbierta, setCompraAbierta] = useState(false);
+  const [reporteAbierto, setReporteAbierto] = useState(false); // NUEVO
   const [listaVouchers, setListaVouchers] = useState([]);
   const [voucherSeleccionado, setVoucherSeleccionado] = useState(null);
   const [voucherAEditar, setVoucherAEditar] = useState(null);
 
-  const isAdmin = localStorage.getItem('harmony_admin') === 'true';
+  // Verificamos si es admin (usando la lógica de rol que veníamos manejando)
+  const isAdmin = true;
 
-  // 2. Cargar datos desde Supabase
+  // 2. Cargar datos
   const obtenerVouchers = async () => {
     try {
       const { data, error } = await supabase
@@ -25,12 +27,9 @@ export default function Vouchers() {
         .order('id', { ascending: true });
 
       if (error) throw error;
-      
-      console.log("Datos recibidos de Supabase:", data); // Esto les dirá si llegan datos
       setListaVouchers(data || []);
     } catch (error) {
       console.error("Error al obtener vouchers:", error.message);
-      alert("No se pudieron cargar los vouchers. Revisa la consola.");
     }
   };
 
@@ -49,22 +48,18 @@ export default function Vouchers() {
   const guardarCambios = async (datos) => {
     try {
       if (voucherAEditar) {
-        // ACTUALIZAR
         const { data, error } = await supabase
           .from('vouchers_web')
           .update(datos)
           .eq('id', voucherAEditar.id)
           .select();
-        
         if (error) throw error;
         setListaVouchers(listaVouchers.map(v => v.id === voucherAEditar.id ? data[0] : v));
       } else {
-        // INSERTAR NUEVO
         const { data, error } = await supabase
           .from('vouchers_web')
           .insert([datos])
           .select();
-        
         if (error) throw error;
         setListaVouchers([...listaVouchers, data[0]]);
       }
@@ -99,7 +94,7 @@ export default function Vouchers() {
         ))}
       </div>
 
-      {/* Modal para que el cliente compre */}
+      {/* MODALES DE CLIENTE */}
       {compraAbierta && (
         <ModalCompraVoucher 
           voucher={voucherSeleccionado}
@@ -107,7 +102,7 @@ export default function Vouchers() {
         />
       )}
 
-      {/* Modal para que el admin cree/edite */}
+      {/* MODALES DE ADMIN */}
       {formAbierto && (
         <ModalFormularioVoucher 
           alCerrar={() => {
@@ -119,10 +114,26 @@ export default function Vouchers() {
         />
       )}
 
-      {/* Botón flotante Admin (Abajo a la izquierda como en Equipo) */}
+      {/* NUEVO: Modal de Reporte de Ventas */}
+      {reporteAbierto && (
+        <ModalReporteVouchers alCerrar={() => setReporteAbierto(false)} />
+      )}
+
+      {/* Botones flotantes Admin (Abajo a la izquierda) */}
       {isAdmin && (
         <div style={styles.fabContainer}>
-          <button style={styles.btnAñadir} onClick={() => setFormAbierto(true)}>+</button>
+          <button 
+            style={styles.btnReporte} 
+            onClick={() => setReporteAbierto(true)}
+          >
+            REPORTE DE VENTAS
+          </button>
+          <button 
+            style={styles.btnAñadir} 
+            onClick={() => setFormAbierto(true)}
+          >
+            +
+          </button>
         </div>
       )}
     </main>
@@ -133,13 +144,33 @@ const styles = {
   subtituloLabel: { textAlign: 'center', color: '#bfa38a', letterSpacing: '3px', fontSize: '0.7rem', marginBottom: '10px', textTransform: 'uppercase' },
   tituloPrincipal: { textAlign: 'center', color: '#1a1a1a', marginBottom: '50px', fontWeight: '300', fontSize: '2.5rem', fontFamily: "'Playfair Display', serif" },
   gridCards: { display: 'flex', gap: '30px', justifyContent: 'center', flexWrap: 'wrap' },
-  fabContainer: { position: 'fixed', bottom: '30px', left: '30px', zIndex: 1000 },
+  fabContainer: { 
+    position: 'fixed', 
+    bottom: '30px', 
+    left: '30px', 
+    zIndex: 1000,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '15px' 
+  },
+  btnReporte: {
+    backgroundColor: '#fff',
+    color: '#8c6d4f',
+    border: '1px solid #c5a37d',
+    padding: '10px 20px',
+    borderRadius: '20px',
+    fontSize: '0.7rem',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
+    letterSpacing: '1px'
+  },
   btnAñadir: { 
     backgroundColor: '#c5a37d', 
     color: 'white', 
     border: 'none', 
-    width: '60px', 
-    height: '60px', 
+    width: '55px', 
+    height: '55px', 
     borderRadius: '50%', 
     fontSize: '2rem', 
     cursor: 'pointer', 

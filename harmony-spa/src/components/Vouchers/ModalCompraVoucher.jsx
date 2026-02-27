@@ -1,28 +1,56 @@
 import React, { useState } from 'react';
+import { supabase } from '../../lib/supabaseClient'; // Asegúrate de que la ruta sea correcta
 
 const ModalCompraVoucher = ({ voucher, alCerrar }) => {
-  const [datos, setDatos] = useState({ de: '', para: '', mensaje: '' });
+  const [datos, setDatos] = useState({ de: '', para: '', telefonoPara: '', mensaje: '' });
+  const [cargando, setCargando] = useState(false);
 
-  const enviarWhatsApp = (e) => {
+  const enviarSolicitud = async (e) => {
     e.preventDefault();
-    // Número del admin de Harmony
-    const numeroAdmin = "5493537650821";
-    
-    // Formateamos el mensaje para que llegue elegante al WhatsApp del negocio
-    const texto = `¡Hola Harmony! ✨ 
+    setCargando(true);
+
+    try {
+      // 1. Registro en la base de datos (Tabla: vouchers_solicitudes)
+      // Esto permite que el Admin vea la intención de compra en su reporte global
+      const { error: dbError } = await supabase
+        .from('vouchers_solicitudes')
+        .insert([{
+          voucher_id: voucher.id,
+          remitente: datos.de,
+          destinatario: datos.para,
+          telefono_destinatario: datos.telefonoPara,
+          mensaje: datos.mensaje,
+          estado: 'PENDIENTE_PAGO'
+        }]);
+
+      if (dbError) throw dbError;
+
+      // 2. Preparación del mensaje de WhatsApp
+      const numeroAdmin = "5493537650821";
+      const texto = `¡Hola Harmony! ✨ 
 Quisiera un *Voucher de Regalo*:
 ------------------------------
 🎁 *Plan:* ${voucher.nombre}
 💰 *Valor:* $${Number(voucher.precio).toLocaleString('es-AR')}
 ✍️ *De:* ${datos.de}
 👤 *Para:* ${datos.para}
+📱 *Tel. Recibe:* ${datos.telefonoPara}
 💌 *Mensaje:* ${datos.mensaje || "Sin mensaje especial"}
 ------------------------------
 ¿Me podrían indicar los pasos para realizar el pago? ¡Gracias!`;
 
-    const url = `https://wa.me/${numeroAdmin}?text=${encodeURIComponent(texto)}`;
-    window.open(url, '_blank');
-    alCerrar();
+      const url = `https://wa.me/${numeroAdmin}?text=${encodeURIComponent(texto)}`;
+      
+      // 3. Abrir WhatsApp y cerrar modal
+      window.open(url, '_blank');
+      alCerrar();
+
+    } catch (error) {
+      console.error("Error al procesar solicitud:", error.message);
+      alert("Hubo un error al registrar tu pedido. Por favor, intenta de nuevo.");
+    } finally {
+      setCargando(false);
+    }
   };
 
   return (
@@ -34,7 +62,7 @@ Quisiera un *Voucher de Regalo*:
           Estás regalando: <strong>{voucher.nombre}</strong>
         </p>
         
-        <form onSubmit={enviarWhatsApp}>
+        <form onSubmit={enviarSolicitud}>
           <label style={styles.label}>TU NOMBRE</label>
           <input 
             style={styles.input} 
@@ -53,16 +81,26 @@ Quisiera un *Voucher de Regalo*:
             onChange={e => setDatos({...datos, para: e.target.value})} 
           />
 
+          <label style={styles.label}>TELÉFONO DE QUIEN RECIBE (WHATSAPP)</label>
+          <input 
+            type="tel"
+            style={styles.input} 
+            placeholder="Ej: 3537123456" 
+            required 
+            value={datos.telefonoPara} 
+            onChange={e => setDatos({...datos, telefonoPara: e.target.value})} 
+          />
+
           <label style={styles.label}>MENSAJE (OPCIONAL)</label>
           <textarea 
-            style={{...styles.input, height: '90px', resize: 'none'}} 
+            style={{...styles.input, height: '80px', resize: 'none'}} 
             placeholder="Escribe una dedicatoria..." 
             value={datos.mensaje} 
             onChange={e => setDatos({...datos, mensaje: e.target.value})} 
           />
 
-          <button type="submit" style={styles.btnPrimario}>
-            SOLICITAR POR WHATSAPP
+          <button type="submit" style={styles.btnPrimario} disabled={cargando}>
+            {cargando ? 'PROCESANDO...' : 'SOLICITAR POR WHATSAPP'}
           </button>
           
           <button type="button" onClick={alCerrar} style={styles.btnSecundario}>

@@ -94,6 +94,11 @@ const BookingModal = ({ isOpen, onClose, selectedTurno, especialista, servicio, 
   return `https://wa.me/${numeroTelefono}?text=${encodeURIComponent(mensaje)}`;
 };
 
+const copiarAlPortapapeles = (texto) => {
+  navigator.clipboard.writeText(texto);
+  alert("¡Copiado al portapapeles!");
+};
+
   return (
     <div style={styles.overlay}>
       <div style={styles.modal}>
@@ -142,12 +147,36 @@ const BookingModal = ({ isOpen, onClose, selectedTurno, especialista, servicio, 
   <div style={{ ...styles.container, textAlign: 'center' }}>
     <div style={styles.circuloExito}>✓</div>
     <h2 style={styles.tituloDorado}>¡Reserva Registrada!</h2>
-    <p style={styles.subtitulo}>Para confirmar tu turno, por favor realiza la transferencia de la seña:</p>
+    <p style={styles.subtitulo}>Realiza la transferencia para confirmar tu turno:</p>
 
-    {/* CAJA DE DATOS BANCARIOS */}
+    {/* CAJA DE DATOS BANCARIOS CON COPIADO */}
     <div style={styles.cajaBanco}>
-      <p style={styles.datoBanco}><strong>Alias:</strong> HARMONY.SPA.SPA</p>
-      <p style={styles.datoBanco}><strong>CBU:</strong> 00000031000XXXXXXXXX</p>
+      <div style={styles.filaBanco}>
+        <p style={styles.datoBanco}><strong>Alias:</strong> HARMONY.SPA.SPA</p>
+        <button 
+          style={styles.btnCopiarMini} 
+          onClick={() => {
+            navigator.clipboard.writeText("HARMONY.SPA.SPA");
+            alert("Alias copiado");
+          }}
+        >
+          COPIAR
+        </button>
+      </div>
+      
+      <div style={styles.filaBanco}>
+        <p style={styles.datoBanco}><strong>CBU:</strong> 00000031000XXXXXXXXX</p>
+        <button 
+          style={styles.btnCopiarMini} 
+          onClick={() => {
+            navigator.clipboard.writeText("00000031000XXXXXXXXX");
+            alert("CBU copiado");
+          }}
+        >
+          COPIAR
+        </button>
+      </div>
+      
       <p style={styles.datoBanco}><strong>Titular:</strong> Nombre del Administrador</p>
       <div style={styles.montoSeña}>Monto seña: $5.000</div>
     </div>
@@ -159,7 +188,7 @@ const BookingModal = ({ isOpen, onClose, selectedTurno, especialista, servicio, 
         rel="noopener noreferrer" 
         style={styles.btnWhatsApp}
       >
-        📱 ENVIAR COMPROBANTE POR WHATSAPP
+         ENVIAR COMPROBANTE POR WHATSAPP
       </a>
 
       <button style={styles.btnFinalizarSimple} onClick={cerrarTodoAlFinalizar}>
@@ -200,7 +229,26 @@ const styles = {
   btnFinalizarSimple: {
     background: 'none', border: 'none', color: '#8c6d4f', cursor: 'pointer',
     fontSize: '0.8rem', textDecoration: 'underline'
-  }
+  },
+  filaBanco: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '8px',
+    borderBottom: '1px solid #f9f6f3',
+    paddingBottom: '5px'
+  },
+  btnCopiarMini: {
+    backgroundColor: '#f2e9e1',
+    color: '#8c6d4f',
+    border: 'none',
+    padding: '4px 8px',
+    borderRadius: '5px',
+    fontSize: '0.6rem',
+    fontWeight: 'bold',
+    cursor: 'pointer',
+    transition: '0.2s'
+  },
 };
 
 export default BookingModal;
