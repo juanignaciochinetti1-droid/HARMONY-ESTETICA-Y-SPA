@@ -7,7 +7,7 @@ const CardEspecialista = ({
   alEditar, 
   alGestionarHorarios,
   alVerHistorialDashboard,
-  isAdmin // Recibimos la prop de seguridad desde Equipo.jsx
+  isAdmin 
 }) => {
   const { nombre, apellido, especialidad, activo, id } = especialista;
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -21,59 +21,39 @@ const CardEspecialista = ({
       {/* --- BLOQUE DE SEGURIDAD: Solo el Admin ve las opciones de gestión --- */}
       {isAdmin && (
         <div style={styles.optionsContainer}>
-          <div style={styles.optionsDot} onClick={() => setMenuAbierto(!menuAbierto)}>⋮</div>
+          <div 
+            style={styles.optionsDot} 
+            onClick={() => setMenuAbierto(!menuAbierto)}
+          >
+            ⋮
+          </div>
           
           {menuAbierto && (
             <div style={styles.menuDesplegable}>
               <div style={styles.menuItem} onClick={() => { alEditar(); setMenuAbierto(false); }}>
-                Editar Perfil
+                ✏️ Editar Perfil
               </div>
               
               <div style={styles.menuItem} onClick={() => { alGestionarHorarios(); setMenuAbierto(false); }}>
-                Gestionar Horarios
+                📅 Gestionar Horarios
               </div>
 
               <div style={styles.menuItem} onClick={() => { alVerHistorialDashboard(); setMenuAbierto(false); }}>
-                Ver historial/agenda
+                📋 Ver historial/agenda
               </div>
 
-              <div style={{ ...styles.menuItem, color: '#e57373' }} onClick={() => { alBorrar(id); setMenuAbierto(false); }}>
-                Eliminar
+              <div 
+                style={{ ...styles.menuItem, color: '#e74c3c', borderTop: '1px solid #f2e9e1' }} 
+                onClick={() => { alBorrar(id); setMenuAbierto(false); }}
+              >
+                🗑️ Eliminar
               </div>
-      {/* Menú de Opciones (Administración - Esquina superior izquierda) */}
-      <div style={styles.optionsContainer}>
-        <div 
-          style={styles.optionsDot} 
-          onClick={() => setMenuAbierto(!menuAbierto)}
-        >
-          ⋮
-        </div>
-        
-        {menuAbierto && (
-          <div style={styles.menuDesplegable}>
-            <div style={styles.menuItem} onClick={() => { alEditar(); setMenuAbierto(false); }}>
-              Editar Perfil
-            </div>
-            
-            <div style={styles.menuItem} onClick={() => { alGestionarHorarios(); setMenuAbierto(false); }}>
-              Gestionar Horarios
-            </div>
-
-            <div style={styles.menuItem} onClick={() => { alVerHistorialDashboard(); setMenuAbierto(false); }}>
-              Ver historial/agenda
-            </div>
-
-            <div 
-              style={{ ...styles.menuItem, color: '#e74c3c', borderTop: '1px solid #f2e9e1' }} 
-              onClick={() => { alBorrar(id); setMenuAbierto(false); }}
-            >
-              Eliminar
             </div>
           )}
         </div>
       )}
 
-      {/* Imagen del Especialista (Escalada para Card de 320px) */}
+      {/* Imagen del Especialista */}
       <div style={styles.imageContainer}>
         <img 
           src={especialista.foto_url || "/avatar-placeholder.png"} 
@@ -86,8 +66,7 @@ const CardEspecialista = ({
       <h3 style={styles.name}>{nombre} {apellido}</h3>
       <p style={styles.specialty}>{especialidad?.toUpperCase() || 'ESPECIALIDAD'}</p>
 
-      {/* Botón Principal: Visible para todos (Clientes y Admin) */}
-      {/* Botón Principal: Unificado con estilo COMPRAR VOUCHER */}
+      {/* Botón Principal: Unificado con estilo VOUCHERS */}
       <button 
         onClick={activo ? alVerHistorial : null}
         style={{
@@ -104,13 +83,12 @@ const CardEspecialista = ({
   );
 };
 
-// ... los estilos se mantienen igual ...
 const styles = {
   card: {
     backgroundColor: '#fff',
     borderRadius: '15px',
-    padding: '50px 30px 40px', // Relleno idéntico al Voucher
-    width: '320px',             // Ancho unificado a 320px
+    padding: '50px 30px 40px',
+    width: '320px',
     textAlign: 'center',
     boxShadow: '0 15px 35px rgba(0,0,0,0.05)',
     position: 'relative',
@@ -151,7 +129,7 @@ const styles = {
     transition: 'background 0.2s',
   },
   imageContainer: {
-    width: '130px', // Proporción ideal para card de 320px
+    width: '130px',
     height: '130px',
     margin: '0 auto 25px',
     borderRadius: '50%',
@@ -182,7 +160,7 @@ const styles = {
     backgroundColor: '#c5a37d',
     color: '#fff',
     border: 'none',
-    padding: '16px', // Grosor unificado con botón de voucher
+    padding: '16px',
     borderRadius: '50px', 
     width: '100%', 
     fontSize: '0.9rem',

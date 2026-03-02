@@ -17,7 +17,7 @@ export default function Equipo() {
   const location = useLocation();
   
   // --- CONFIGURACIÓN DE NEGOCIO ---
-  const LIMITE_EMPLEADOS = 5; // Puedes ajustar este número según tu necesidad
+  const LIMITE_EMPLEADOS = 5;
 
   // 1. Estados de Modales
   const [formAbierto, setFormAbierto] = useState(false);
@@ -44,8 +44,6 @@ export default function Equipo() {
       .from('users')
       .select('*')
       .eq('rol', 'EMPLEADO');
-      // Quitamos el filtro de 'activo' para que el admin vea a todos, 
-      // pero en CardEspecialista puedes manejar la opacidad si están inactivos.
 
     if (error) console.error("Error al obtener especialistas:", error.message);
     else setListaEspecialistas(data);
@@ -100,7 +98,6 @@ export default function Equipo() {
       };
 
       if (especialistaAEditar) {
-        // MODO EDICIÓN
         const { data, error } = await supabase
           .from('users')
           .update(payload)
@@ -109,29 +106,22 @@ export default function Equipo() {
 
         if (error) throw error;
         setListaEspecialistas(listaEspecialistas.map(esp => esp.id === especialistaAEditar.id ? data[0] : esp));
-        
       } else {
-        // MODO CREACIÓN (Con control de límite)
         if (listaEspecialistas.length >= LIMITE_EMPLEADOS) {
           alert(`Límite alcanzado. Solo puedes tener ${LIMITE_EMPLEADOS} empleados.`);
           return;
         }
 
-        // 1. Crear en Autenticación (Supabase Auth)
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: datos.email,
-          password: datos.password, // Viene del nuevo campo del ModalFormulario
-          options: {
-            data: { nombre, rol: 'EMPLEADO' }
-          }
+          password: datos.password,
+          options: { data: { nombre, rol: 'EMPLEADO' } }
         });
 
         if (authError) throw authError;
 
-        // Nota: Tu Trigger de SQL insertará automáticamente en la tabla 'users'
-        // Esperamos un momento y recargamos la lista
         setTimeout(() => obtenerEspecialistas(), 1000);
-        alert("¡Empleado creado con éxito! Ya puede iniciar sesión.");
+        alert("¡Empleado creado con éxito!");
       }
 
       setFormAbierto(false);
@@ -174,10 +164,7 @@ export default function Equipo() {
 
       {/* --- MODALES --- */}
       {mostrarServicios && (
-        <ModalServicios 
-          alCerrar={() => setMostrarServicios(false)}
-          alSeleccionar={manejarServicioElegido}
-        />
+        <ModalServicios alCerrar={() => setMostrarServicios(false)} alSeleccionar={manejarServicioElegido} />
       )}
 
       {calendarioAbierto && (
@@ -219,10 +206,7 @@ export default function Equipo() {
       )}
       
       {gestionAbierta && (
-        <ModalGestionarAgenda 
-          especialista={especialistaSeleccionado} 
-          alCerrar={() => setGestionAbierta(false)} 
-        />
+        <ModalGestionarAgenda especialista={especialistaSeleccionado} alCerrar={() => setGestionAbierta(false)} />
       )}
 
       {/* --- ACCIONES ADMIN --- */}
@@ -235,15 +219,16 @@ export default function Equipo() {
           <button 
             style={{
               ...styles.btnAñadir,
-              backgroundColor: listaEspecialistas.length >= LIMITE_EMPLEADOS ? '#ccc' : '#8c6d4f',
-              cursor: listaEspecialistas.length >= LIMITE_EMPLEADOS ? 'not-allowed' : 'pointer'
+              backgroundColor: listaEspecialistas.length >= LIMITE_EMPLEADOS ? '#ccc' : '#c5a37d',
+              cursor: listaEspecialistas.length >= LIMITE_EMPLEADOS ? 'not-allowed' : 'pointer',
+              transform: listaEspecialistas.length >= LIMITE_EMPLEADOS ? 'none' : 'scale(1)'
             }} 
             onClick={() => {
-              if (listaEspecialistas.length >= LIMITE_EMPLEADOS) {
-                alert("Has alcanzado el límite de empleados permitido.");
-              } else {
+              if (listaEspecialistas.length < LIMITE_EMPLEADOS) {
                 setEspecialistaAEditar(null);
                 setFormAbierto(true);
+              } else {
+                alert("Has alcanzado el límite de empleados permitido.");
               }
             }}
           >
@@ -254,10 +239,7 @@ export default function Equipo() {
 
       {reporteAbierto && <ModalReporteGlobal alCerrar={() => setReporteAbierto(false)} />}
       {historialAbierto && (
-        <ModalHistorialEmpleado 
-          especialista={especialistaSeleccionado} 
-          alCerrar={() => setHistorialAbierto(false)} 
-        />
+        <ModalHistorialEmpleado especialista={especialistaSeleccionado} alCerrar={() => setHistorialAbierto(false)} />
       )}
     </main>
   );
@@ -265,26 +247,22 @@ export default function Equipo() {
 
 const styles = {
   subtituloLabel: { textAlign: 'center', color: '#bfa38a', letterSpacing: '3px', fontSize: '0.7rem', marginBottom: '10px' },
-  tituloPrincipal: { textAlign: 'center', color: '#8c6d4f', marginBottom: '20px', fontWeight: '300', fontSize: '2rem', fontFamily: "'Playfair Display', serif" },
+  tituloPrincipal: { textAlign: 'center', color: '#8c6d4f', marginBottom: '10px', fontWeight: '300', fontSize: '2rem', fontFamily: "'Playfair Display', serif" },
   contadorCupos: { textAlign: 'center', color: '#a6835a', fontSize: '0.75rem', marginBottom: '30px', letterSpacing: '1px' },
   gridCards: { display: 'flex', gap: '30px', justifyContent: 'center', flexWrap: 'wrap' },
-  fabContainer: { position: 'fixed', bottom: '30px', left: '30px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1000 },
-  btnReporte: { backgroundColor: '#fff', color: '#8c6d4f', border: '1px solid #f2e9e1', padding: '10px 20px', borderRadius: '25px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.08)', letterSpacing: '1px' },
-  btnAñadir: { color: 'white', border: 'none', width: '55px', height: '55px', borderRadius: '50%', fontSize: '1.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 6px 20px rgba(140, 109, 79, 0.3)', transition: 'all 0.3s ease' }
-  btnReporte: { backgroundColor: '#fff', color: '#8c6d4f', border: '1px solid #f2e9e1', padding: '8px 18px', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' },
+  fabContainer: { position: 'fixed', bottom: '30px', left: '30px', display: 'flex', flexDirection: 'column', gap: '15px', zIndex: 1000 },
+  btnReporte: { backgroundColor: '#fff', color: '#8c6d4f', border: '1px solid #f2e9e1', padding: '12px 20px', borderRadius: '25px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', letterSpacing: '1px' },
   btnAñadir: { 
-    backgroundColor: '#c5a37d', // Dorado unificado
     color: 'white', 
     border: 'none', 
-    width: '50px', 
-    height: '50px', 
+    width: '55px', 
+    height: '55px', 
     borderRadius: '50%', 
-    fontSize: '1.8rem', 
-    cursor: 'pointer', 
+    fontSize: '2rem', 
     display: 'flex', 
     justifyContent: 'center', 
     alignItems: 'center', 
-    boxShadow: '0 6px 20px rgba(197, 163, 125, 0.4)', // Sombra dorada
-    transition: 'transform 0.2s ease'
+    boxShadow: '0 6px 20px rgba(197, 163, 125, 0.4)', 
+    transition: 'all 0.3s ease' 
   }
 };
