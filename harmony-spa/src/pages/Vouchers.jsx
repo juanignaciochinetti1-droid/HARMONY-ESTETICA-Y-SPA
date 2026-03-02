@@ -16,7 +16,9 @@ export default function Vouchers() {
   const [voucherAEditar, setVoucherAEditar] = useState(null);
 
   // Verificamos si es admin (usando la lógica de rol que veníamos manejando)
-  const isAdmin = true;
+  // En Vouchers.jsx
+const rolGuardado = localStorage.getItem('harmony_rol');
+const isAdmin = rolGuardado !== null && rolGuardado === 'ADMIN';
 
   // 2. Cargar datos
   const obtenerVouchers = async () => {

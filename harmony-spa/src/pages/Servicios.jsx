@@ -12,9 +12,13 @@ export default function Servicios() {
   const [mostrarFiltro, setMostrarFiltro] = useState(false);
 
   // ESTADOS PARA GESTIÓN (EDITAR/ELIMINAR)
-  const [menuAbierto, setMenuAbierto] = useState(null); // Controla qué menú de 3 puntitos está abierto
+  const [menuAbierto, setMenuAbierto] = useState(null); 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [formData, setFormData] = useState({ id: null, nombre: '', descripcion: '', precio: '', duracion_min: '' });
+
+  // --- SEGURIDAD DE ROL ---
+  const rolGuardado = localStorage.getItem('harmony_rol');
+  const isAdmin = rolGuardado !== null && rolGuardado === 'ADMIN';
 
   const navigate = useNavigate();
 
@@ -23,8 +27,6 @@ export default function Servicios() {
   }, []);
 
   const obtenerServicios = async () => {
-    // Quitamos el .eq('activo', true) si queremos que el admin vea todos, 
-    // o lo dejamos si solo manejamos eliminaciones reales.
     const { data, error } = await supabase.from('servicios').select('*');
     if (!error) setServicios(data);
     setCargando(false);
@@ -46,8 +48,6 @@ export default function Servicios() {
     });
   };
 
-  // --- LÓGICA DE GESTIÓN ---
-
   const eliminarServicio = async (id) => {
     setMenuAbierto(null);
     if (window.confirm("¿Estás seguro de que deseas eliminar este servicio?")) {
@@ -55,7 +55,6 @@ export default function Servicios() {
         const { error } = await supabase.from('servicios').delete().eq('id', id);
         if (error) throw error;
         setServicios(servicios.filter(s => s.id !== id));
-        alert("Eliminado con éxito");
       } catch (err) {
         alert("Error: " + err.message);
       }
@@ -84,10 +83,8 @@ export default function Servicios() {
     };
 
     if (formData.id) {
-      // Actualizar
       await supabase.from('servicios').update(payload).eq('id', formData.id);
     } else {
-      // Insertar nuevo
       await supabase.from('servicios').insert([payload]);
     }
     
@@ -101,33 +98,39 @@ export default function Servicios() {
       <header style={styles.header}>
         <h1 style={styles.tituloHeader}>Nuestros Servicios</h1>
         <p style={styles.subtituloHeader}>RESERVA CON EL 30% DE SEÑA</p>
-        <button 
-          style={styles.btnNuevo} 
-          onClick={() => { setFormData({id: null, nombre:'', descripcion:'', precio:'', duracion_min:''}); setModalAbierto(true); }}
-        >
-          + AGREGAR SERVICIO
-        </button>
+        
+        {/* --- PROTECCIÓN: Botón de Agregar solo para Admin --- */}
+        {isAdmin && (
+          <button 
+            style={styles.btnNuevo} 
+            onClick={() => { setFormData({id: null, nombre:'', descripcion:'', precio:'', duracion_min:''}); setModalAbierto(true); }}
+          >
+            + AGREGAR SERVICIO
+          </button>
+        )}
       </header>
 
       <div style={styles.grid}>
         {servicios.map((s) => (
           <div key={s.id} style={styles.card}>
             
-            {/* MENÚ DE TRES PUNTITOS */}
-            <div style={styles.menuContenedor}>
-              <button 
-                style={styles.optionsBadge} 
-                onClick={() => setMenuAbierto(menuAbierto === s.id ? null : s.id)}
-              >
-                ⋮
-              </button>
-              {menuAbierto === s.id && (
-                <div style={styles.dropdown}>
-                  <button style={styles.dropdownItem} onClick={() => prepararEdicion(s)}>✏️ Editar</button>
-                  <button style={{...styles.dropdownItem, color: '#e74c3c'}} onClick={() => eliminarServicio(s.id)}>🗑️ Eliminar</button>
-                </div>
-              )}
-            </div>
+            {/* --- PROTECCIÓN: Menú de gestión solo para Admin --- */}
+            {isAdmin && (
+              <div style={styles.menuContenedor}>
+                <button 
+                  style={styles.optionsBadge} 
+                  onClick={() => setMenuAbierto(menuAbierto === s.id ? null : s.id)}
+                >
+                  ⋮
+                </button>
+                {menuAbierto === s.id && (
+                  <div style={styles.dropdown}>
+                    <button style={styles.dropdownItem} onClick={() => prepararEdicion(s)}>✏️ Editar</button>
+                    <button style={{...styles.dropdownItem, color: '#e74c3c'}} onClick={() => eliminarServicio(s.id)}>🗑️ Eliminar</button>
+                  </div>
+                )}
+              </div>
+            )}
 
             <h2 style={styles.servicioNombre}>{s.nombre}</h2>
             <p style={styles.servicioDescripcion}>{s.descripcion}</p>
@@ -142,7 +145,7 @@ export default function Servicios() {
         ))}
       </div>
 
-      {/* MODAL DE FORMULARIO (EDICIÓN/NUEVO) */}
+      {/* MODAL DE FORMULARIO (Protegido por el botón que lo abre) */}
       {modalAbierto && (
         <div style={styles.overlay}>
           <div style={styles.modal}>
@@ -186,7 +189,6 @@ export default function Servicios() {
         </div>
       )}
 
-      {/* MODAL DE FILTRO ESPECIALISTAS */}
       {mostrarFiltro && (
         <ModalFiltroEspecialistas 
           servicio={servicioEnProceso}
@@ -198,44 +200,18 @@ export default function Servicios() {
   );
 }
 
+// ... Estilos (Se mantienen los tuyos, están perfectos) ...
 const styles = {
-  container: {
-    backgroundColor: '#f3ece4',
-    minHeight: '100vh',
-    padding: '80px 20px',
-    fontFamily: "'Playfair Display', serif"
-  },
+  container: { backgroundColor: '#f3ece4', minHeight: '100vh', padding: '80px 20px', fontFamily: "'Playfair Display', serif" },
   header: { textAlign: 'center', marginBottom: '60px' },
   tituloHeader: { color: '#8c6d4f', fontSize: '3.2rem', marginBottom: '10px' },
   subtituloHeader: { color: '#bfa38a', fontSize: '0.8rem', letterSpacing: '3px', fontWeight: '600' },
   grid: { display: 'flex', flexWrap: 'wrap', gap: '40px', justifyContent: 'center', maxWidth: '1200px', margin: '0 auto' },
-  card: {
-    backgroundColor: '#ffffff',
-    borderRadius: '12px',
-    padding: '45px 30px',
-    width: '320px',
-    textAlign: 'center',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.03)',
-    position: 'relative',
-    border: '1px solid #f2e9e1',
-  },
-  // ESTILOS DEL MENÚ 3 PUNTITOS
+  card: { backgroundColor: '#ffffff', borderRadius: '12px', padding: '45px 30px', width: '320px', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.03)', position: 'relative', border: '1px solid #f2e9e1' },
   menuContenedor: { position: 'absolute', top: '15px', right: '15px' },
-  optionsBadge: {
-    background: 'none', border: '1px solid #f2e9e1', borderRadius: '50%',
-    width: '35px', height: '35px', display: 'flex', alignItems: 'center',
-    justifyContent: 'center', color: '#d1c4b9', fontSize: '1.2rem', cursor: 'pointer'
-  },
-  dropdown: {
-    position: 'absolute', right: '0', top: '40px', backgroundColor: 'white',
-    boxShadow: '0px 8px 16px rgba(0,0,0,0.1)', borderRadius: '8px', zIndex: 100,
-    minWidth: '130px', border: '1px solid #eee'
-  },
-  dropdownItem: {
-    width: '100%', background: 'none', border: 'none', padding: '10px 15px',
-    textAlign: 'left', cursor: 'pointer', fontSize: '14px'
-  },
-  // ESTILOS CARD
+  optionsBadge: { background: 'none', border: '1px solid #f2e9e1', borderRadius: '50%', width: '35px', height: '35px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d1c4b9', fontSize: '1.2rem', cursor: 'pointer' },
+  dropdown: { position: 'absolute', right: '0', top: '40px', backgroundColor: 'white', boxShadow: '0px 8px 16px rgba(0,0,0,0.1)', borderRadius: '8px', zIndex: 100, minWidth: '130px', border: '1px solid #eee' },
+  dropdownItem: { width: '100%', background: 'none', border: 'none', padding: '10px 15px', textAlign: 'left', cursor: 'pointer', fontSize: '14px' },
   servicioNombre: { color: '#8c6d4f', fontSize: '2rem', marginBottom: '15px' },
   servicioDescripcion: { color: '#bfa38a', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '25px', minHeight: '50px' },
   infoContenedor: { marginBottom: '30px' },
@@ -243,7 +219,6 @@ const styles = {
   precioTexto: { color: '#bfa38a', fontSize: '1.6rem', fontWeight: '500' },
   btnReservar: { backgroundColor: '#a6835a', color: '#fff', border: 'none', padding: '12px 35px', borderRadius: '25px', cursor: 'pointer' },
   btnNuevo: { backgroundColor: '#a6835a', color: 'white', border: 'none', padding: '10px 25px', borderRadius: '25px', cursor: 'pointer', marginTop: '20px', letterSpacing: '1px' },
-  // ESTILOS MODAL EDICIÓN
   overlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
   modal: { backgroundColor: 'white', padding: '40px', borderRadius: '15px', width: '90%', maxWidth: '400px' },
   form: { display: 'flex', flexDirection: 'column', gap: '15px' },

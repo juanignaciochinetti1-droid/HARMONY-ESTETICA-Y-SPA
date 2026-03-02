@@ -16,27 +16,36 @@ import ModalHistorialEmpleado from '../components/Especialistas/ModalHistorialEm
 export default function Equipo() {
   const location = useLocation();
   
-  // 1. Estados
-  const [modalAbierto, setModalAbierto] = useState(false);
+  // --- CONFIGURACIÓN DE NEGOCIO ---
+  const LIMITE_EMPLEADOS = 5; // Puedes ajustar este número según tu necesidad
+
+  // 1. Estados de Modales
   const [formAbierto, setFormAbierto] = useState(false);
   const [gestionAbierta, setGestionAbierta] = useState(false);
   const [calendarioAbierto, setCalendarioAbierto] = useState(false);
   const [mostrarServicios, setMostrarServicios] = useState(false);
   const [reporteAbierto, setReporteAbierto] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [datosReservaTemporal, setDatosReservaTemporal] = useState(null);
   const [historialAbierto, setHistorialAbierto] = useState(false);
 
+  // 2. Estados de Datos
   const [listaEspecialistas, setListaEspecialistas] = useState([]);
   const [especialistaSeleccionado, setEspecialistaSeleccionado] = useState(null);
   const [especialistaAEditar, setEspecialistaAEditar] = useState(null);
   const [servicioSeleccionado, setServicioSeleccionado] = useState(null);
+  const [datosReservaTemporal, setDatosReservaTemporal] = useState(null);
+
+  // 3. SEGURIDAD: Lógica de Rol
+  const rolGuardado = localStorage.getItem('harmony_rol');
+  const isAdmin = rolGuardado !== null && rolGuardado === 'ADMIN';
 
   const obtenerEspecialistas = async () => {
     const { data, error } = await supabase
       .from('users')
       .select('*')
       .eq('rol', 'EMPLEADO');
+      // Quitamos el filtro de 'activo' para que el admin vea a todos, 
+      // pero en CardEspecialista puedes manejar la opacidad si están inactivos.
 
     if (error) console.error("Error al obtener especialistas:", error.message);
     else setListaEspecialistas(data);
@@ -52,6 +61,8 @@ export default function Equipo() {
       window.history.replaceState({}, document.title);
     }
   }, [location]);
+
+  // --- FUNCIONES DE NEGOCIO ---
 
   const abrirFlujoReserva = (especialista) => {
     setEspecialistaSeleccionado(especialista);
@@ -70,36 +81,69 @@ export default function Equipo() {
   };
 
   const borrarEspecialista = async (id) => {
-    if (window.confirm("¿Deseas eliminar este especialista?")) {
+    if (window.confirm("¿Deseas eliminar este especialista? Esto borrará su acceso al sistema.")) {
       const { error } = await supabase.from('users').delete().eq('id', id);
       if (!error) setListaEspecialistas(listaEspecialistas.filter(esp => esp.id !== id));
+      else alert("Error al borrar: " + error.message);
     }
   };
 
   const guardarCambios = async (datos) => {
-    const partes = datos.nombre.split(' ');
-    const nombre = partes[0];
-    const apellido = partes.slice(1).join(' ') || '';
-    
-    const payload = {
-      nombre, apellido, email: datos.email, telefono: datos.telefono,
-      especialidad: datos.especialidad, activo: datos.activo, foto_url: datos.foto
-    };
+    try {
+      const partes = datos.nombre.split(' ');
+      const nombre = partes[0];
+      const apellido = partes.slice(1).join(' ') || '';
+      
+      const payload = {
+        nombre, apellido, email: datos.email, telefono: datos.telefono,
+        especialidad: datos.especialidad, activo: datos.activo, foto_url: datos.foto
+      };
 
-    if (especialistaAEditar) {
-      const { data, error } = await supabase.from('users').update(payload).eq('id', especialistaAEditar.id).select();
-      if (!error) {
+      if (especialistaAEditar) {
+        // MODO EDICIÓN
+        const { data, error } = await supabase
+          .from('users')
+          .update(payload)
+          .eq('id', especialistaAEditar.id)
+          .select();
+
+        if (error) throw error;
         setListaEspecialistas(listaEspecialistas.map(esp => esp.id === especialistaAEditar.id ? data[0] : esp));
-        setFormAbierto(false);
-        setEspecialistaAEditar(null);
+        
+      } else {
+        // MODO CREACIÓN (Con control de límite)
+        if (listaEspecialistas.length >= LIMITE_EMPLEADOS) {
+          alert(`Límite alcanzado. Solo puedes tener ${LIMITE_EMPLEADOS} empleados.`);
+          return;
+        }
+
+        // 1. Crear en Autenticación (Supabase Auth)
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: datos.email,
+          password: datos.password, // Viene del nuevo campo del ModalFormulario
+          options: {
+            data: { nombre, rol: 'EMPLEADO' }
+          }
+        });
+
+        if (authError) throw authError;
+
+        // Nota: Tu Trigger de SQL insertará automáticamente en la tabla 'users'
+        // Esperamos un momento y recargamos la lista
+        setTimeout(() => obtenerEspecialistas(), 1000);
+        alert("¡Empleado creado con éxito! Ya puede iniciar sesión.");
       }
-    } else {
-      const { data, error } = await supabase.from('users').insert([{...payload, rol: 'EMPLEADO', password_hash: '123456'}]).select();
-      if (!error) {
-        setListaEspecialistas([...listaEspecialistas, data[0]]);
-        setFormAbierto(false);
-      }
+
+      setFormAbierto(false);
+      setEspecialistaAEditar(null);
+    } catch (error) {
+      alert("Error en la operación: " + error.message);
     }
+  };
+
+  const cerrarModalForm = () => {
+    setFormAbierto(false);
+    setEspecialistaAEditar(null);
   };
 
   return (
@@ -107,11 +151,18 @@ export default function Equipo() {
       <p style={styles.subtituloLabel}>PROFESIONALES A TU SERVICIO</p>
       <h2 style={styles.tituloPrincipal}>Nuestro Equipo</h2>
       
+      {isAdmin && (
+        <p style={styles.contadorCupos}>
+          Cupos ocupados: <strong>{listaEspecialistas.length} de {LIMITE_EMPLEADOS}</strong>
+        </p>
+      )}
+
       <div style={styles.gridCards}>
         {listaEspecialistas.map(esp => (
           <CardEspecialista 
             key={esp.id} 
             especialista={esp} 
+            isAdmin={isAdmin}
             alVerHistorial={() => abrirFlujoReserva(esp)} 
             alGestionarHorarios={() => { setEspecialistaSeleccionado(esp); setGestionAbierta(true); }}
             alVerHistorialDashboard={() => verHistorialEmpleado(esp)} 
@@ -121,6 +172,7 @@ export default function Equipo() {
         ))}
       </div>
 
+      {/* --- MODALES --- */}
       {mostrarServicios && (
         <ModalServicios 
           alCerrar={() => setMostrarServicios(false)}
@@ -128,7 +180,6 @@ export default function Equipo() {
         />
       )}
 
-      {/* MODAL CALENDARIO: Ahora no se cierra al pasar al siguiente paso */}
       {calendarioAbierto && (
         <ModalCalendario 
           especialista={especialistaSeleccionado} 
@@ -136,49 +187,72 @@ export default function Equipo() {
           alCerrar={() => setCalendarioAbierto(false)} 
           alSeleccionarHorario={(fecha, hora) => {
             if (!servicioSeleccionado) {
-              alert("¡Espera! Primero debes elegir un servicio.");
+              alert("Por favor, selecciona un servicio primero.");
               setCalendarioAbierto(false);
               setMostrarServicios(true);
               return;
             }
             setDatosReservaTemporal({ fecha, hora });
-            // MODIFICACIÓN: Ya no cerramos el calendario aquí.
-            // Así, si el usuario cierra el BookingModal para "Modificar", el calendario sigue abierto.
             setIsModalOpen(true);
           }}
         />
       )}
 
-      {/* MODAL DE RESERVA */}
       <BookingModal 
-        key={datosReservaTemporal ? `${datosReservaTemporal.fecha}-${datosReservaTemporal.hora}` : 'booking-cerrado'}
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} // Si cierra aquí para modificar, vuelve al calendario que quedó abierto atrás
+        onClose={() => setIsModalOpen(false)} 
         selectedTurno={datosReservaTemporal}
         especialista={especialistaSeleccionado}
         servicio={servicioSeleccionado}
         onSuccess={() => { 
-          // Solo cerramos todo cuando la reserva es exitosa
           setIsModalOpen(false);
           setCalendarioAbierto(false);
         }}
       />
 
-      {modalAbierto && <ModalAgenda especialista={especialistaSeleccionado} alCerrar={() => setModalAbierto(false)} />}
-      {formAbierto && <ModalFormulario alCerrar={() => {setFormAbierto(false); setEspecialistaAEditar(null);}} alGuardar={guardarCambios} especialistaAEditar={especialistaAEditar} />}
-      {gestionAbierta && <ModalGestionarAgenda especialista={especialistaSeleccionado} alCerrar={() => setGestionAbierta(false)} />}
-
-      <div style={styles.fabContainer}>
-        <button style={styles.btnReporte} onClick={() => setReporteAbierto(true)}>
-          REPORTE GLOBAL
-        </button>
-        <button style={styles.btnAñadir} onClick={() => setFormAbierto(true)}>+</button>
-      </div>
-
-      {reporteAbierto && (
-        <ModalReporteGlobal alCerrar={() => setReporteAbierto(false)} />
+      {formAbierto && (
+        <ModalFormulario 
+          alCerrar={cerrarModalForm} 
+          alGuardar={guardarCambios} 
+          especialistaAEditar={especialistaAEditar} 
+        />
+      )}
+      
+      {gestionAbierta && (
+        <ModalGestionarAgenda 
+          especialista={especialistaSeleccionado} 
+          alCerrar={() => setGestionAbierta(false)} 
+        />
       )}
 
+      {/* --- ACCIONES ADMIN --- */}
+      {isAdmin && (
+        <div style={styles.fabContainer}>
+          <button style={styles.btnReporte} onClick={() => setReporteAbierto(true)}>
+            REPORTE GLOBAL
+          </button>
+          
+          <button 
+            style={{
+              ...styles.btnAñadir,
+              backgroundColor: listaEspecialistas.length >= LIMITE_EMPLEADOS ? '#ccc' : '#8c6d4f',
+              cursor: listaEspecialistas.length >= LIMITE_EMPLEADOS ? 'not-allowed' : 'pointer'
+            }} 
+            onClick={() => {
+              if (listaEspecialistas.length >= LIMITE_EMPLEADOS) {
+                alert("Has alcanzado el límite de empleados permitido.");
+              } else {
+                setEspecialistaAEditar(null);
+                setFormAbierto(true);
+              }
+            }}
+          >
+            +
+          </button>
+        </div>
+      )}
+
+      {reporteAbierto && <ModalReporteGlobal alCerrar={() => setReporteAbierto(false)} />}
       {historialAbierto && (
         <ModalHistorialEmpleado 
           especialista={especialistaSeleccionado} 
@@ -191,9 +265,10 @@ export default function Equipo() {
 
 const styles = {
   subtituloLabel: { textAlign: 'center', color: '#bfa38a', letterSpacing: '3px', fontSize: '0.7rem', marginBottom: '10px' },
-  tituloPrincipal: { textAlign: 'center', color: '#8c6d4f', marginBottom: '40px', fontWeight: '300', fontSize: '2rem' },
+  tituloPrincipal: { textAlign: 'center', color: '#8c6d4f', marginBottom: '20px', fontWeight: '300', fontSize: '2rem', fontFamily: "'Playfair Display', serif" },
+  contadorCupos: { textAlign: 'center', color: '#a6835a', fontSize: '0.75rem', marginBottom: '30px', letterSpacing: '1px' },
   gridCards: { display: 'flex', gap: '30px', justifyContent: 'center', flexWrap: 'wrap' },
   fabContainer: { position: 'fixed', bottom: '30px', left: '30px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1000 },
-  btnReporte: { backgroundColor: '#fff', color: '#8c6d4f', border: '1px solid #f2e9e1', padding: '8px 18px', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' },
-  btnAñadir: { backgroundColor: '#8c6d4f', color: 'white', border: 'none', width: '50px', height: '50px', borderRadius: '50%', fontSize: '1.8rem', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 6px 20px rgba(140, 109, 79, 0.3)' }
+  btnReporte: { backgroundColor: '#fff', color: '#8c6d4f', border: '1px solid #f2e9e1', padding: '10px 20px', borderRadius: '25px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.08)', letterSpacing: '1px' },
+  btnAñadir: { color: 'white', border: 'none', width: '55px', height: '55px', borderRadius: '50%', fontSize: '1.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 6px 20px rgba(140, 109, 79, 0.3)', transition: 'all 0.3s ease' }
 };

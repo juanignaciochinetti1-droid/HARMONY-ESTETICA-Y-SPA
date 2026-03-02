@@ -19,17 +19,27 @@ const LoginModal = ({ alCerrar, alLoguear }) => {
       if (error) throw error;
 
       // 2. Buscamos el ROL del usuario en nuestra tabla pública 'users'
-      const { data: perfil, error: perfilError } = await supabase
-        .from('users')
-        .select('rol, nombre')
-        .eq('id', data.user.id)
-        .single();
+      const { data: perfiles, error: perfilError } = await supabase
+  .from('users')
+  .select('rol, nombre')
+  .eq('id', data.user.id);
 
-      if (perfilError) throw perfilError;
+if (perfilError || !perfiles || perfiles.length === 0) {
+  // Si llegás acá, es porque el ID de Auth no existe en la tabla public.users
+  console.error("ID no encontrado en public.users:", data.user.id);
+  alert("Error: Usuario autenticado pero sin perfil en la base de datos.");
+  return;
+}
 
-      // 3. Guardamos el rol en localStorage (para que la web sepa qué mostrar)
-      localStorage.setItem('harmony_rol', perfil.rol);
-      localStorage.setItem('harmony_user', perfil.nombre);
+const perfil = perfiles[0];
+
+// Guardamos TODO para que el Navbar y las páginas se enteren
+localStorage.setItem('harmony_rol', perfil.rol);
+localStorage.setItem('harmony_user', perfil.nombre);
+localStorage.setItem('harmony_admin', perfil.rol === 'ADMIN' ? 'true' : 'false');
+
+alert(`¡Bienvenido/a ${perfil.nombre}!`);
+window.location.href = "/vouchers"; // Recarga total para activar botones
       
       // Si es admin, activamos la marca que ya veníamos usando
       if (perfil.rol === 'ADMIN') {

@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 
-// 1. Asegúrate de incluir alVerHistorialDashboard en la lista de props
 const CardEspecialista = ({ 
   especialista, 
   alVerHistorial, 
   alBorrar, 
   alEditar, 
   alGestionarHorarios,
-  alVerHistorialDashboard 
+  alVerHistorialDashboard,
+  isAdmin // Recibimos la prop de seguridad desde Equipo.jsx
 }) => {
   const { nombre, apellido, especialidad, activo, id } = especialista;
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -17,31 +17,33 @@ const CardEspecialista = ({
       ...styles.card,
       opacity: activo ? 1 : 0.7
     }}>
-      {/* Menú lateral izquierdo */}
-      <div style={styles.optionsContainer}>
-        <div style={styles.optionsDot} onClick={() => setMenuAbierto(!menuAbierto)}>⋮</div>
-        
-        {menuAbierto && (
-          <div style={styles.menuDesplegable}>
-            <div style={styles.menuItem} onClick={() => { alEditar(); setMenuAbierto(false); }}>
-              Editar Perfil
-            </div>
-            
-            <div style={styles.menuItem} onClick={() => { alGestionarHorarios(); setMenuAbierto(false); }}>
-              Gestionar Horarios
-            </div>
+      
+      {/* --- BLOQUE DE SEGURIDAD: Solo el Admin ve las opciones de gestión --- */}
+      {isAdmin && (
+        <div style={styles.optionsContainer}>
+          <div style={styles.optionsDot} onClick={() => setMenuAbierto(!menuAbierto)}>⋮</div>
+          
+          {menuAbierto && (
+            <div style={styles.menuDesplegable}>
+              <div style={styles.menuItem} onClick={() => { alEditar(); setMenuAbierto(false); }}>
+                Editar Perfil
+              </div>
+              
+              <div style={styles.menuItem} onClick={() => { alGestionarHorarios(); setMenuAbierto(false); }}>
+                Gestionar Horarios
+              </div>
 
-            {/* Esta es la nueva opción para el Dashboard de turnos */}
-            <div style={styles.menuItem} onClick={() => { alVerHistorialDashboard(); setMenuAbierto(false); }}>
-              Ver historial/agenda
-            </div>
+              <div style={styles.menuItem} onClick={() => { alVerHistorialDashboard(); setMenuAbierto(false); }}>
+                Ver historial/agenda
+              </div>
 
-            <div style={{ ...styles.menuItem, color: '#e57373' }} onClick={() => { alBorrar(id); setMenuAbierto(false); }}>
-              Eliminar
+              <div style={{ ...styles.menuItem, color: '#e57373' }} onClick={() => { alBorrar(id); setMenuAbierto(false); }}>
+                Eliminar
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       <div style={styles.imageContainer}>
         <img 
@@ -54,7 +56,7 @@ const CardEspecialista = ({
       <h3 style={styles.name}>{nombre} {apellido}</h3>
       <p style={styles.specialty}>{especialidad?.toUpperCase() || 'ESPECIALIDAD'}</p>
 
-      {/* Botón Principal: Abre Calendario (alVerHistorial) */}
+      {/* Botón Principal: Visible para todos (Clientes y Admin) */}
       <button 
         onClick={activo ? alVerHistorial : null}
         style={{
@@ -69,6 +71,7 @@ const CardEspecialista = ({
   );
 };
 
+// ... los estilos se mantienen igual ...
 const styles = {
   card: {
     backgroundColor: '#fff',
