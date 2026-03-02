@@ -15,7 +15,7 @@ const CardEspecialista = ({
   return (
     <div style={{
       ...styles.card,
-      opacity: activo ? 1 : 0.7
+      opacity: activo ? 1 : 0.8
     }}>
       
       {/* --- BLOQUE DE SEGURIDAD: Solo el Admin ve las opciones de gestión --- */}
@@ -40,11 +40,40 @@ const CardEspecialista = ({
               <div style={{ ...styles.menuItem, color: '#e57373' }} onClick={() => { alBorrar(id); setMenuAbierto(false); }}>
                 Eliminar
               </div>
+      {/* Menú de Opciones (Administración - Esquina superior izquierda) */}
+      <div style={styles.optionsContainer}>
+        <div 
+          style={styles.optionsDot} 
+          onClick={() => setMenuAbierto(!menuAbierto)}
+        >
+          ⋮
+        </div>
+        
+        {menuAbierto && (
+          <div style={styles.menuDesplegable}>
+            <div style={styles.menuItem} onClick={() => { alEditar(); setMenuAbierto(false); }}>
+              Editar Perfil
+            </div>
+            
+            <div style={styles.menuItem} onClick={() => { alGestionarHorarios(); setMenuAbierto(false); }}>
+              Gestionar Horarios
+            </div>
+
+            <div style={styles.menuItem} onClick={() => { alVerHistorialDashboard(); setMenuAbierto(false); }}>
+              Ver historial/agenda
+            </div>
+
+            <div 
+              style={{ ...styles.menuItem, color: '#e74c3c', borderTop: '1px solid #f2e9e1' }} 
+              onClick={() => { alBorrar(id); setMenuAbierto(false); }}
+            >
+              Eliminar
             </div>
           )}
         </div>
       )}
 
+      {/* Imagen del Especialista (Escalada para Card de 320px) */}
       <div style={styles.imageContainer}>
         <img 
           src={especialista.foto_url || "/avatar-placeholder.png"} 
@@ -53,20 +82,24 @@ const CardEspecialista = ({
         />
       </div>
 
+      {/* Identidad Visual Harmony Spa */}
       <h3 style={styles.name}>{nombre} {apellido}</h3>
       <p style={styles.specialty}>{especialidad?.toUpperCase() || 'ESPECIALIDAD'}</p>
 
       {/* Botón Principal: Visible para todos (Clientes y Admin) */}
+      {/* Botón Principal: Unificado con estilo COMPRAR VOUCHER */}
       <button 
         onClick={activo ? alVerHistorial : null}
         style={{
           ...styles.btnDisponibilidad,
-          backgroundColor: activo ? '#a6835a' : '#ccc',
+          backgroundColor: activo ? '#c5a37d' : '#ccc',
           cursor: activo ? 'pointer' : 'not-allowed'
         }}
       >
-        {activo ? 'DISPONIBILIDAD' : 'NO DISPONIBLE'}
+        {activo ? 'VER DISPONIBILIDAD' : 'NO DISPONIBLE'}
       </button>
+
+      <p style={styles.footerTexto}>* Profesional verificado por Harmony Spa</p>
     </div>
   );
 };
@@ -75,62 +108,97 @@ const CardEspecialista = ({
 const styles = {
   card: {
     backgroundColor: '#fff',
-    borderRadius: '25px',
-    padding: '30px 20px',
-    width: '240px',
+    borderRadius: '15px',
+    padding: '50px 30px 40px', // Relleno idéntico al Voucher
+    width: '320px',             // Ancho unificado a 320px
     textAlign: 'center',
-    boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
+    boxShadow: '0 15px 35px rgba(0,0,0,0.05)',
     position: 'relative',
-    border: '1px solid #f2e9e1',
-    transition: 'transform 0.3s ease'
+    overflow: 'hidden',
+    border: '1px solid #f0e6db',
+    transition: 'transform 0.3s ease',
   },
   optionsContainer: { 
     position: 'absolute', 
-    top: '15px', 
+    top: '20px', 
     left: '20px', 
     zIndex: 10 
   },  
-  optionsDot: { color: '#d1c4b9', fontSize: '1.2rem', cursor: 'pointer', padding: '5px' },
+  optionsDot: { 
+    color: '#bfa38a',
+    fontSize: '1.4rem', 
+    cursor: 'pointer', 
+    padding: '5px' 
+  },
   menuDesplegable: {
     position: 'absolute',
-    top: '25px',
+    top: '35px',
     left: '0',
     backgroundColor: '#fff',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-    borderRadius: '10px',
-    padding: '10px 0',
-    width: '150px',
+    boxShadow: '0 5px 20px rgba(0,0,0,0.15)',
+    borderRadius: '8px',
+    padding: '8px 0',
+    width: '180px',
     textAlign: 'left',
     zIndex: 100,
     border: '1px solid #f2e9e1'
   },
   menuItem: {
-    padding: '8px 15px',
-    fontSize: '0.7rem',
+    padding: '12px 15px',
+    fontSize: '0.85rem',
     color: '#8c6d4f',
     cursor: 'pointer',
     transition: 'background 0.2s',
   },
   imageContainer: {
-    width: '110px',
-    height: '110px',
-    margin: '0 auto 15px',
+    width: '130px', // Proporción ideal para card de 320px
+    height: '130px',
+    margin: '0 auto 25px',
     borderRadius: '50%',
     overflow: 'hidden',
-    border: '3px solid #fdfbf9'
+    border: '4px solid #f0e6db',
+    boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
   },
-  image: { width: '100%', height: '100%', objectFit: 'cover' },
-  name: { color: '#8c6d4f', fontSize: '1.1rem', margin: '10px 0 5px 0', fontWeight: '500' },
-  specialty: { color: '#bfa38a', fontSize: '0.65rem', letterSpacing: '2px', marginBottom: '20px' },
+  image: { 
+    width: '100%', 
+    height: '100%', 
+    objectFit: 'cover' 
+  },
+  name: { 
+    color: '#1a1a1a', 
+    fontSize: '1.8rem', 
+    fontFamily: "'Playfair Display', serif", 
+    margin: '10px 0 5px 0', 
+    fontWeight: '400' 
+  },
+  specialty: { 
+    color: '#bfa38a', 
+    fontSize: '0.75rem', 
+    letterSpacing: '2px', 
+    marginBottom: '35px',
+    fontWeight: '600'
+  },
   btnDisponibilidad: {
+    backgroundColor: '#c5a37d',
+    color: '#fff',
     border: 'none',
-    color: 'white',
-    padding: '8px 20px',
-    borderRadius: '15px',
-    fontSize: '0.6rem',
+    padding: '16px', // Grosor unificado con botón de voucher
+    borderRadius: '50px', 
+    width: '100%', 
+    fontSize: '0.9rem',
+    fontWeight: '600',
+    cursor: 'pointer',
     letterSpacing: '1px',
-    fontWeight: 'bold'
+    transition: 'background 0.3s',
+    boxShadow: '0 4px 10px rgba(197, 163, 125, 0.2)'
   },
+  footerTexto: { 
+    marginTop: '25px', 
+    fontSize: '0.7rem', 
+    color: '#bfa38a', 
+    fontStyle: 'italic', 
+    letterSpacing: '0.5px' 
+  }
 };
 
 export default CardEspecialista;

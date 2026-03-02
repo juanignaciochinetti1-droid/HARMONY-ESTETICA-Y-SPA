@@ -77,9 +77,16 @@ const styles = {
   precio: { fontSize: '2.4rem', color: '#c5a37d', fontWeight: '500', marginBottom: '20px' },
   lista: { listStyle: 'none', padding: 0, marginBottom: '30px', color: '#777', fontSize: '0.9rem', lineHeight: '2.2' },
   btnComprar: { 
-    backgroundColor: '#1a1a1a', color: '#fff', border: 'none', padding: '16px', 
-    borderRadius: '50px', width: '100%', fontWeight: '600', cursor: 'pointer', 
-    letterSpacing: '1px', transition: 'background 0.3s' 
+    backgroundColor: '#c5a37d', // CAMBIADO: Ahora coincide con el color del precio
+    color: '#fff', 
+    border: 'none', 
+    padding: '16px', 
+    borderRadius: '50px', 
+    width: '100%', 
+    fontWeight: '600', 
+    cursor: 'pointer', 
+    letterSpacing: '1px', 
+    transition: 'background 0.3s' 
   },
   footerTexto: { marginTop: '20px', fontSize: '0.7rem', color: '#bfa38a', fontStyle: 'italic', letterSpacing: '0.5px' }
 };

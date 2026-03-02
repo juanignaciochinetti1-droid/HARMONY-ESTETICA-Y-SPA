@@ -10,16 +10,15 @@ const ModalReporteGlobal = ({ alCerrar }) => {
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
   
-  // NUEVOS ESTADOS: Paginación y Filtro de Estado
+  const FECHA_MINIMA_2026 = "2026-01-01";
   const [filtroEstado, setFiltroEstado] = useState("TODOS");
   const [pagina, setPagina] = useState(1);
-  const itemsPorPagina = 8; // Número ideal para no hacer scroll
+  const itemsPorPagina = 8; 
 
   useEffect(() => {
     obtenerReporteCompleto();
   }, []);
 
-  // Resetear a página 1 cuando se busca o filtra
   useEffect(() => {
     setPagina(1);
   }, [busqueda, filtroEstado, fechaDesde, fechaHasta]);
@@ -49,8 +48,7 @@ const ModalReporteGlobal = ({ alCerrar }) => {
       setTurnos(turnos.map(t => t.id === id ? { ...t, estado: nuevoEstado } : t));
     }
   };
-
-  // --- LÓGICA DE FILTRADO MEJORADA ---
+  
   const turnosFiltrados = turnos.filter(t => {
     const terminos = busqueda.toLowerCase().trim().split(/\s+/);
     const nombreCli = `${t.cliente?.nombre || ''} ${t.cliente?.apellido || ''}`.toLowerCase();
@@ -62,15 +60,13 @@ const ModalReporteGlobal = ({ alCerrar }) => {
     );
 
     const coincideFecha = (!fechaDesde || t.fecha >= fechaDesde) && 
-                         (!fechaHasta || t.fecha <= fechaHasta);
+                          (!fechaHasta || t.fecha <= fechaHasta);
     
-    // Nuevo: Filtro por Tab de Estado
     const coincideEstado = filtroEstado === "TODOS" || t.estado === filtroEstado;
 
     return coincideTexto && coincideFecha && coincideEstado;
   });
 
-  // --- LÓGICA DE PAGINACIÓN ---
   const totalPaginas = Math.ceil(turnosFiltrados.length / itemsPorPagina);
   const indiceUltimo = pagina * itemsPorPagina;
   const indicePrimero = indiceUltimo - itemsPorPagina;
@@ -110,56 +106,69 @@ const ModalReporteGlobal = ({ alCerrar }) => {
     <div style={styles.overlay} onClick={alCerrar}>
       <div style={styles.modal} onClick={e => e.stopPropagation()}>
         
-        <div style={styles.header}>
-          <div>
-            <h2 style={styles.titulo}>Panel de Control Global</h2>
-            <div style={styles.rangoFechas}>
-              <div style={styles.campoFecha}>
-                <label style={styles.labelMini}>Desde</label>
-                <input type="date" value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} style={styles.inputDate} />
-              </div>
-              <div style={styles.campoFecha}>
-                <label style={styles.labelMini}>Hasta</label>
-                <input type="date" value={fechaHasta} onChange={e => setFechaHasta(e.target.value)} style={styles.inputDate} />
+        <div style={styles.fixedSection}>
+          <div style={styles.header}>
+            <div>
+              <h2 style={styles.titulo}>Panel de Control Global</h2>
+              <div style={styles.rangoFechas}>
+                <div style={styles.campoFecha}>
+                  <label style={styles.labelMini}>Desde</label>
+                  <input 
+                    type="date" 
+                    min={FECHA_MINIMA_2026}
+                    value={fechaDesde} 
+                    onChange={e => setFechaDesde(e.target.value)} 
+                    style={styles.inputDate} 
+                  />
+                </div>
+                <div style={styles.campoFecha}>
+                  <label style={styles.labelMini}>Hasta</label>
+                  <input 
+                    type="date" 
+                    min={FECHA_MINIMA_2026}
+                    value={fechaHasta} 
+                    onChange={e => setFechaHasta(e.target.value)} 
+                    style={styles.inputDate} 
+                  />
+                </div>
               </div>
             </div>
+            <div style={styles.flexRow}>
+              <button style={styles.btnPDF} onClick={exportarPDF}>📄 PDF</button>
+              <button style={styles.btnCloseX} onClick={alCerrar}>×</button>
+            </div>
           </div>
-          <div style={styles.flexRow}>
-            <button style={styles.btnPDF} onClick={exportarPDF}>📄 PDF</button>
-            <button style={styles.btnCloseX} onClick={alCerrar}>×</button>
+
+          <div style={styles.tabsContainer}>
+            {["TODOS", "PENDIENTE", "CONFIRMADO", "CANCELADO"].map(est => (
+              <button 
+                key={est}
+                onClick={() => setFiltroEstado(est)}
+                style={{
+                  ...styles.tabBtn,
+                  backgroundColor: filtroEstado === est ? '#a6835a' : 'transparent',
+                  color: filtroEstado === est ? '#fff' : '#a6835a',
+                  border: filtroEstado === est ? '1px solid #a6835a' : '1px solid #e2d5c5'
+                }}
+              >
+                {est}
+              </button>
+            ))}
           </div>
+
+          <input 
+            type="text" 
+            placeholder="Buscar por cliente, empleado o servicio..." 
+            style={styles.inputBusqueda}
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
         </div>
 
-        {/* TABS DE FILTRADO RÁPIDO */}
-        <div style={styles.tabsContainer}>
-          {["TODOS", "PENDIENTE", "CONFIRMADO", "CANCELADO"].map(est => (
-            <button 
-              key={est}
-              onClick={() => setFiltroEstado(est)}
-              style={{
-                ...styles.tabBtn,
-                backgroundColor: filtroEstado === est ? '#a6835a' : 'transparent',
-                color: filtroEstado === est ? '#fff' : '#a6835a',
-                border: filtroEstado === est ? '1px solid #a6835a' : '1px solid #e2d5c5'
-              }}
-            >
-              {est}
-            </button>
-          ))}
-        </div>
-
-        <input 
-          type="text" 
-          placeholder="Buscar por cliente, empleado o servicio..." 
-          style={styles.inputBusqueda}
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-        />
-
-        {cargando ? (
-          <div style={styles.loader}>Cargando...</div>
-        ) : (
-          <>
+        <div style={styles.scrollSection}>
+          {cargando ? (
+            <div style={styles.loader}>Cargando...</div>
+          ) : (
             <div style={styles.tablaContenedor}>
               <table style={styles.tabla}>
                 <thead>
@@ -211,27 +220,27 @@ const ModalReporteGlobal = ({ alCerrar }) => {
                 </tbody>
               </table>
             </div>
+          )}
+        </div>
 
-            {/* CONTROLES DE PAGINACIÓN */}
-            <div style={styles.paginacionContainer}>
-              <button 
-                disabled={pagina === 1} 
-                onClick={() => setPagina(pagina - 1)}
-                style={{...styles.btnPag, opacity: pagina === 1 ? 0.4 : 1}}
-              >
-                Anterior
-              </button>
-              <span style={styles.infoPagina}>Página {pagina} de {totalPaginas || 1}</span>
-              <button 
-                disabled={pagina === totalPaginas || totalPaginas === 0} 
-                onClick={() => setPagina(pagina + 1)}
-                style={{...styles.btnPag, opacity: (pagina === totalPaginas || totalPaginas === 0) ? 0.4 : 1}}
-              >
-                Siguiente
-              </button>
-            </div>
-          </>
-        )}
+        <div style={styles.paginacionContainer}>
+          <button 
+            disabled={pagina === 1} 
+            onClick={() => setPagina(pagina - 1)}
+            style={{...styles.btnPag, opacity: pagina === 1 ? 0.4 : 1}}
+          >
+            Anterior
+          </button>
+          <span style={styles.infoPagina}>Página {pagina} de {totalPaginas || 1}</span>
+          <button 
+            disabled={pagina === totalPaginas || totalPaginas === 0} 
+            onClick={() => setPagina(pagina + 1)}
+            style={{...styles.btnPag, opacity: (pagina === totalPaginas || totalPaginas === 0) ? 0.4 : 1}}
+          >
+            Siguiente
+          </button>
+        </div>
+
       </div>
     </div>
   );
@@ -239,7 +248,23 @@ const ModalReporteGlobal = ({ alCerrar }) => {
 
 const styles = {
   overlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 6000, padding: '20px' },
-  modal: { background: '#fff', padding: '30px', borderRadius: '30px', width: '100%', maxWidth: '1000px', maxHeight: '90vh', overflowY: 'auto' },
+  modal: { 
+    background: '#fff', 
+    padding: '30px', 
+    borderRadius: '30px', 
+    width: '1000px', 
+    height: '85vh', 
+    display: 'flex', 
+    flexDirection: 'column', 
+    boxShadow: '0 20px 50px rgba(0,0,0,0.2)' 
+  },
+  fixedSection: { flexShrink: 0 },
+  scrollSection: { 
+    flex: 1, 
+    overflowY: 'auto', 
+    margin: '10px 0',
+    paddingRight: '5px'
+  },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' },
   titulo: { color: '#a6835a', fontSize: '1.4rem', fontFamily: 'serif', margin: '0 0 10px 0' },
   rangoFechas: { display: 'flex', gap: '15px' },
@@ -249,14 +274,21 @@ const styles = {
   flexRow: { display: 'flex', gap: '10px', alignItems: 'center' },
   btnPDF: { backgroundColor: '#fff', color: '#a6835a', border: '1px solid #a6835a', padding: '8px 15px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold' },
   btnCloseX: { background: '#f5f5f5', border: 'none', borderRadius: '50%', width: '35px', height: '35px', cursor: 'pointer' },
-  inputBusqueda: { width: '100%', padding: '12px 20px', borderRadius: '12px', border: '1px solid #eee', marginBottom: '20px', outline: 'none' },
+  inputBusqueda: { width: '100%', padding: '12px 20px', borderRadius: '12px', border: '1px solid #eee', marginBottom: '10px', outline: 'none' },
   tablaContenedor: { border: '1px solid #f2e9e1', borderRadius: '15px', overflow: 'hidden' },
   tabla: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' },
-  th: { padding: '15px', backgroundColor: '#fdfbf9', color: '#a6835a', borderBottom: '1px solid #f2e9e1' },
+  th: { padding: '15px', backgroundColor: '#fdfbf9', color: '#a6835a', borderBottom: '1px solid #f2e9e1', position: 'sticky', top: 0, zIndex: 10 },
   td: { padding: '15px', borderBottom: '1px solid #f2e9e1' },
   statusBadge: { padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 'bold' },
   select: { padding: '5px', borderRadius: '6px', border: '1px solid #ddd' },
-  loader: { textAlign: 'center', padding: '20px', color: '#a6835a' }
+  loader: { textAlign: 'center', padding: '20px', color: '#a6835a' },
+  tabsContainer: { display: 'flex', gap: '10px', marginBottom: '20px' },
+  tabBtn: { padding: '8px 15px', borderRadius: '20px', fontSize: '0.75rem', cursor: 'pointer', transition: 'all 0.3s ease', border: '1px solid #e2d5c5' },
+  paginacionContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', marginTop: '10px', flexShrink: 0 },
+  btnPag: { padding: '8px 15px', borderRadius: '10px', border: '1px solid #a6835a', color: '#a6835a', background: '#fff', cursor: 'pointer' },
+  infoPagina: { fontSize: '0.85rem', color: '#8c6d4f' },
+  fecha: { color: '#a6835a', fontWeight: 'bold' },
+  hora: { color: '#bfa38a', fontSize: '0.75rem' }
 };
 
 export default ModalReporteGlobal;

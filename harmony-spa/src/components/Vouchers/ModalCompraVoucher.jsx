@@ -11,7 +11,6 @@ const ModalCompraVoucher = ({ voucher, alCerrar }) => {
 
     try {
       // 1. Registro en la base de datos (Tabla: vouchers_solicitudes)
-      // Esto permite que el Admin vea la intención de compra en su reporte global
       const { error: dbError } = await supabase
         .from('vouchers_solicitudes')
         .insert([{
@@ -41,7 +40,6 @@ Quisiera un *Voucher de Regalo*:
 
       const url = `https://wa.me/${numeroAdmin}?text=${encodeURIComponent(texto)}`;
       
-      // 3. Abrir WhatsApp y cerrar modal
       window.open(url, '_blank');
       alCerrar();
 
@@ -99,7 +97,13 @@ Quisiera un *Voucher de Regalo*:
             onChange={e => setDatos({...datos, mensaje: e.target.value})} 
           />
 
-          <button type="submit" style={styles.btnPrimario} disabled={cargando}>
+          <button 
+            type="submit" 
+            style={styles.btnPrimario} 
+            disabled={cargando}
+            onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
+            onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+          >
             {cargando ? 'PROCESANDO...' : 'SOLICITAR POR WHATSAPP'}
           </button>
           
@@ -126,7 +130,7 @@ const styles = {
   },
   decoracionSuperior: {
     position: 'absolute', top: 0, left: 0, width: '100%', height: '5px',
-    backgroundColor: '#c5a37d'
+    backgroundColor: '#a67c52' // Color unificado
   },
   titulo: { 
     color: '#1a1a1a', textAlign: 'center', fontFamily: "'Playfair Display', serif", 
@@ -146,9 +150,11 @@ const styles = {
     fontFamily: 'inherit', fontSize: '0.9rem'
   },
   btnPrimario: { 
-    width: '100%', padding: '16px', backgroundColor: '#1a1a1a', color: '#fff', 
+    width: '100%', padding: '16px', 
+    backgroundColor: '#a67c52', // AQUÍ ESTÁ EL CAMBIO DE COLOR
+    color: '#fff', 
     border: 'none', borderRadius: '50px', fontWeight: '600', cursor: 'pointer', 
-    letterSpacing: '1px', fontSize: '0.9rem', transition: 'transform 0.2s' 
+    letterSpacing: '1px', fontSize: '0.9rem', transition: 'all 0.3s ease' 
   },
   btnSecundario: { 
     width: '100%', marginTop: '15px', padding: '10px', background: 'none', 

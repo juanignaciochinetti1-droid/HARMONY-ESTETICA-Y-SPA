@@ -271,4 +271,20 @@ const styles = {
   fabContainer: { position: 'fixed', bottom: '30px', left: '30px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1000 },
   btnReporte: { backgroundColor: '#fff', color: '#8c6d4f', border: '1px solid #f2e9e1', padding: '10px 20px', borderRadius: '25px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.08)', letterSpacing: '1px' },
   btnAñadir: { color: 'white', border: 'none', width: '55px', height: '55px', borderRadius: '50%', fontSize: '1.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 6px 20px rgba(140, 109, 79, 0.3)', transition: 'all 0.3s ease' }
+  btnReporte: { backgroundColor: '#fff', color: '#8c6d4f', border: '1px solid #f2e9e1', padding: '8px 18px', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' },
+  btnAñadir: { 
+    backgroundColor: '#c5a37d', // Dorado unificado
+    color: 'white', 
+    border: 'none', 
+    width: '50px', 
+    height: '50px', 
+    borderRadius: '50%', 
+    fontSize: '1.8rem', 
+    cursor: 'pointer', 
+    display: 'flex', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    boxShadow: '0 6px 20px rgba(197, 163, 125, 0.4)', // Sombra dorada
+    transition: 'transform 0.2s ease'
+  }
 };
