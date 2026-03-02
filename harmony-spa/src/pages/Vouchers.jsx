@@ -6,6 +6,7 @@ import CardVoucher from '../components/Vouchers/CardVoucher';
 import ModalFormularioVoucher from '../components/Vouchers/ModalFormularioVoucher';
 import ModalCompraVoucher from '../components/Vouchers/ModalCompraVoucher';
 import ModalReporteVouchers from '../components/Vouchers/ModalReporteVouchers';
+
 export default function Vouchers() {
   // 1. Estados
   const [formAbierto, setFormAbierto] = useState(false);
@@ -71,7 +72,8 @@ export default function Vouchers() {
   };
 
   return (
-    <main style={{ backgroundColor: '#fcfaf7', minHeight: '100vh', padding: '80px 20px' }}>
+    /* CAMBIO REALIZADO: backgroundColor actualizado a #f5eee6 */
+    <main style={{ backgroundColor: '#f5eee6', minHeight: '100vh', padding: '80px 20px' }}>
       <p style={styles.subtituloLabel}>REGALA BIENESTAR</p>
       <h2 style={styles.tituloPrincipal}>Vouchers de Regalo</h2>
 

@@ -128,7 +128,6 @@ export default function Equipo() {
         />
       )}
 
-      {/* MODAL CALENDARIO: Ahora no se cierra al pasar al siguiente paso */}
       {calendarioAbierto && (
         <ModalCalendario 
           especialista={especialistaSeleccionado} 
@@ -142,23 +141,19 @@ export default function Equipo() {
               return;
             }
             setDatosReservaTemporal({ fecha, hora });
-            // MODIFICACIÓN: Ya no cerramos el calendario aquí.
-            // Así, si el usuario cierra el BookingModal para "Modificar", el calendario sigue abierto.
             setIsModalOpen(true);
           }}
         />
       )}
 
-      {/* MODAL DE RESERVA */}
       <BookingModal 
         key={datosReservaTemporal ? `${datosReservaTemporal.fecha}-${datosReservaTemporal.hora}` : 'booking-cerrado'}
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} // Si cierra aquí para modificar, vuelve al calendario que quedó abierto atrás
+        onClose={() => setIsModalOpen(false)} 
         selectedTurno={datosReservaTemporal}
         especialista={especialistaSeleccionado}
         servicio={servicioSeleccionado}
         onSuccess={() => { 
-          // Solo cerramos todo cuando la reserva es exitosa
           setIsModalOpen(false);
           setCalendarioAbierto(false);
         }}
@@ -195,5 +190,19 @@ const styles = {
   gridCards: { display: 'flex', gap: '30px', justifyContent: 'center', flexWrap: 'wrap' },
   fabContainer: { position: 'fixed', bottom: '30px', left: '30px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 1000 },
   btnReporte: { backgroundColor: '#fff', color: '#8c6d4f', border: '1px solid #f2e9e1', padding: '8px 18px', borderRadius: '20px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' },
-  btnAñadir: { backgroundColor: '#8c6d4f', color: 'white', border: 'none', width: '50px', height: '50px', borderRadius: '50%', fontSize: '1.8rem', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 6px 20px rgba(140, 109, 79, 0.3)' }
+  btnAñadir: { 
+    backgroundColor: '#c5a37d', // Dorado unificado
+    color: 'white', 
+    border: 'none', 
+    width: '50px', 
+    height: '50px', 
+    borderRadius: '50%', 
+    fontSize: '1.8rem', 
+    cursor: 'pointer', 
+    display: 'flex', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    boxShadow: '0 6px 20px rgba(197, 163, 125, 0.4)', // Sombra dorada
+    transition: 'transform 0.2s ease'
+  }
 };
