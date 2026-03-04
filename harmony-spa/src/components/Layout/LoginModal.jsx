@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from "../../lib/supabaseClient";
+
 const LoginModal = ({ alCerrar, alLoguear }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,40 +19,36 @@ const LoginModal = ({ alCerrar, alLoguear }) => {
 
       if (error) throw error;
 
-      // 2. Buscamos el ROL del usuario en nuestra tabla pública 'users'
+      // 2. Buscamos el ROL y el ID en nuestra tabla pública 'users'
       const { data: perfiles, error: perfilError } = await supabase
-  .from('users')
-  .select('rol, nombre')
-  .eq('id', data.user.id);
+        .from('users')
+        .select('id, rol, nombre') // ¡Agregado el id aquí!
+        .eq('id', data.user.id);
 
-if (perfilError || !perfiles || perfiles.length === 0) {
-  // Si llegás acá, es porque el ID de Auth no existe en la tabla public.users
-  console.error("ID no encontrado en public.users:", data.user.id);
-  alert("Error: Usuario autenticado pero sin perfil en la base de datos.");
-  return;
-}
-
-const perfil = perfiles[0];
-
-// Guardamos TODO para que el Navbar y las páginas se enteren
-localStorage.setItem('harmony_rol', perfil.rol);
-localStorage.setItem('harmony_user', perfil.nombre);
-localStorage.setItem('harmony_admin', perfil.rol === 'ADMIN' ? 'true' : 'false');
-
-alert(`¡Bienvenido/a ${perfil.nombre}!`);
-window.location.href = "/vouchers"; // Recarga total para activar botones
-      
-      // Si es admin, activamos la marca que ya veníamos usando
-      if (perfil.rol === 'ADMIN') {
-        localStorage.setItem('harmony_admin', 'true');
-      } else {
-        localStorage.removeItem('harmony_admin');
+      if (perfilError || !perfiles || perfiles.length === 0) {
+        console.error("ID no encontrado en public.users:", data.user.id);
+        alert("Error: Usuario autenticado pero sin perfil en la base de datos.");
+        return;
       }
 
+      const perfil = perfiles[0];
+
+      // 3. Guardamos TODO en LocalStorage (Sincronizado con Login.jsx)
+      localStorage.setItem('harmony_user_id', perfil.id); // <--- ESTO ARREGLA LA VISTA DE EQUIPO
+      localStorage.setItem('harmony_rol', perfil.rol);
+      localStorage.setItem('harmony_user', perfil.nombre);
+      localStorage.setItem('harmony_admin', perfil.rol === 'ADMIN' ? 'true' : 'false');
+
+      if (alLoguear) alLoguear(perfil); 
+      
       alert(`¡Bienvenido/a ${perfil.nombre}!`);
-      if (alLoguear) alLoguear(perfil); // Avisamos al componente padre
-      alCerrar();
-      window.location.reload(); // Recargamos para que se apliquen los permisos
+
+      // 4. Redirección Inteligente con recarga total para limpiar estados
+      if (perfil.rol === 'ADMIN') {
+        window.location.href = "/vouchers";
+      } else {
+        window.location.href = "/equipo";
+      }
 
     } catch (error) {
       alert("Error al iniciar sesión: " + error.message);
@@ -94,6 +91,7 @@ window.location.href = "/vouchers"; // Recarga total para activar botones
   );
 };
 
+// ... estilos iguales ...
 const styles = {
   overlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(26, 26, 26, 0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, backdropFilter: 'blur(5px)' },
   modal: { background: 'white', padding: '40px', borderRadius: '25px', width: '320px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' },

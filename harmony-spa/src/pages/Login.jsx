@@ -9,54 +9,54 @@ export default function Login() {
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setCargando(true);
+  e.preventDefault();
+  setCargando(true);
 
-    try {
-      // 1. Autenticación con Supabase Auth
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+  try {
+    // 1. Autenticación con Supabase Auth
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      if (error) throw error;
+    if (error) throw error;
 
-      if (data?.user) {
-        // 2. Buscamos el ROL en tu tabla pública 'users'
-        // NUEVA LÓGICA MÁS SEGURA:
-const { data: perfiles, error: perfilError } = await supabase
-  .from('users')
-  .select('rol, nombre')
-  .eq('id', data.user.id);
+    if (data?.user) {
+      // 2. Buscamos el ROL y el ID en tu tabla pública 'users'
+      const { data: perfiles, error: perfilError } = await supabase
+        .from('users')
+        .select('id, rol, nombre') // Agregamos 'id' aquí
+        .eq('id', data.user.id);
 
-if (perfilError || !perfiles || perfiles.length === 0) {
-  // Si llegás acá, es porque el ID de Auth no existe en la tabla public.users
-  console.error("ID no encontrado en public.users:", data.user.id);
-  alert("Error: Usuario autenticado pero sin perfil en la base de datos.");
-  return;
-}
-
-const perfil = perfiles[0];
-
-// Guardamos TODO para que el Navbar y las páginas se enteren
-localStorage.setItem('harmony_rol', perfil.rol);
-localStorage.setItem('harmony_user', perfil.nombre);
-localStorage.setItem('harmony_admin', perfil.rol === 'ADMIN' ? 'true' : 'false');
-
-alert(`¡Bienvenido/a ${perfil.nombre}!`);
-window.location.href = "/vouchers"; // Recarga total para activar botones
-        
-        // Redirigimos al inicio o a vouchers
-        alert(`¡Bienvenido! Rol: ${perfil.rol}`);
-        navigate('/vouchers'); 
+      if (perfilError || !perfiles || perfiles.length === 0) {
+        console.error("ID no encontrado en public.users:", data.user.id);
+        alert("Error: Usuario autenticado pero sin perfil en la base de datos.");
+        return;
       }
-    } catch (error) {
-      alert("Error al iniciar sesión: " + error.message);
-    } finally {
-      setCargando(false);
-    }
-  };
 
+      const perfil = perfiles[0];
+
+      // 3. Guardamos los datos en el LocalStorage
+      localStorage.setItem('harmony_user_id', perfil.id); // <--- VITAL para que el empleado vea su propia card
+      localStorage.setItem('harmony_rol', perfil.rol);
+      localStorage.setItem('harmony_user', perfil.nombre);
+      localStorage.setItem('harmony_admin', perfil.rol === 'ADMIN' ? 'true' : 'false');
+
+      alert(`¡Bienvenido/a ${perfil.nombre}!`);
+
+      // 4. Redireccionamiento inteligente
+      if (perfil.rol === 'ADMIN') {
+        window.location.href = "/vouchers";
+      } else {
+        window.location.href = "/equipo"; // El empleado va directo a su panel de gestión
+      }
+    }
+  } catch (error) {
+    alert("Error al iniciar sesión: " + error.message);
+  } finally {
+    setCargando(false);
+  }
+};
   return (
     <div style={styles.overlay}>
       <div style={styles.card}>

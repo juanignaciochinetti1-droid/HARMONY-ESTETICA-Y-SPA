@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 
@@ -35,9 +35,11 @@ export default function Equipo() {
   const [servicioSeleccionado, setServicioSeleccionado] = useState(null);
   const [datosReservaTemporal, setDatosReservaTemporal] = useState(null);
 
-  // 3. SEGURIDAD: Lógica de Rol
+  // 3. SEGURIDAD: Lógica de Rol e Identidad
   const rolGuardado = localStorage.getItem('harmony_rol');
+  const idLogueado = localStorage.getItem('harmony_user_id'); 
   const isAdmin = rolGuardado !== null && rolGuardado === 'ADMIN';
+  const esEmpleado = rolGuardado === 'EMPLEADO';
 
   const obtenerEspecialistas = async () => {
     const { data, error } = await supabase
@@ -60,6 +62,19 @@ export default function Equipo() {
     }
   }, [location]);
 
+  // --- FILTRADO DE VISTA ---
+const especialistasAMostrar = useMemo(() => {
+  if (isAdmin) {
+    // El admin ve a todos
+    return listaEspecialistas;
+  } else if (esEmpleado) {
+    // El empleado solo se ve a sí mismo (según tu lógica actual)
+    return listaEspecialistas.filter(esp => esp.id === idLogueado);
+  } else {
+    // Si NO es admin y NO es empleado, es un CLIENTE: ve a todos los activos
+    return listaEspecialistas.filter(esp => esp.activo !== false);
+  }
+}, [isAdmin, esEmpleado, listaEspecialistas, idLogueado]);
   // --- FUNCIONES DE NEGOCIO ---
 
   const abrirFlujoReserva = (especialista) => {
@@ -139,7 +154,9 @@ export default function Equipo() {
   return (
     <main style={{ backgroundColor: '#f5eee6', minHeight: '100vh', padding: '60px 20px' }}>
       <p style={styles.subtituloLabel}>PROFESIONALES A TU SERVICIO</p>
-      <h2 style={styles.tituloPrincipal}>Nuestro Equipo</h2>
+      <h2 style={styles.tituloPrincipal}>
+        {esEmpleado ? 'Mi Espacio de Trabajo' : 'Nuestro Equipo'}
+      </h2>
       
       {isAdmin && (
         <p style={styles.contadorCupos}>
@@ -148,11 +165,12 @@ export default function Equipo() {
       )}
 
       <div style={styles.gridCards}>
-        {listaEspecialistas.map(esp => (
+        {especialistasAMostrar.map(esp => (
           <CardEspecialista 
             key={esp.id} 
             especialista={esp} 
-            isAdmin={isAdmin}
+            // El empleado tiene permisos de "Admin" solo sobre su propia tarjeta
+            isAdmin={isAdmin || (esEmpleado && esp.id === idLogueado)}
             alVerHistorial={() => abrirFlujoReserva(esp)} 
             alGestionarHorarios={() => { setEspecialistaSeleccionado(esp); setGestionAbierta(true); }}
             alVerHistorialDashboard={() => verHistorialEmpleado(esp)} 
@@ -220,8 +238,7 @@ export default function Equipo() {
             style={{
               ...styles.btnAñadir,
               backgroundColor: listaEspecialistas.length >= LIMITE_EMPLEADOS ? '#ccc' : '#c5a37d',
-              cursor: listaEspecialistas.length >= LIMITE_EMPLEADOS ? 'not-allowed' : 'pointer',
-              transform: listaEspecialistas.length >= LIMITE_EMPLEADOS ? 'none' : 'scale(1)'
+              cursor: listaEspecialistas.length >= LIMITE_EMPLEADOS ? 'not-allowed' : 'pointer'
             }} 
             onClick={() => {
               if (listaEspecialistas.length < LIMITE_EMPLEADOS) {
