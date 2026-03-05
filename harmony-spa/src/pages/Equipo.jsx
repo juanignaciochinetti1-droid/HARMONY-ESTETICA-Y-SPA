@@ -78,7 +78,6 @@ export default function Equipo() {
   }, [location]);
 
   // --- FILTRADO DE VISTA ---
-<<<<<<< HEAD
 const especialistasAMostrar = useMemo(() => {
   if (isAdmin || esEmpleado) {
     // Tanto el Admin como el Empleado ven a todo el equipo
@@ -88,14 +87,6 @@ const especialistasAMostrar = useMemo(() => {
     return listaEspecialistas.filter(esp => esp.activo !== false);
   }
 }, [isAdmin, esEmpleado, listaEspecialistas]);
-=======
-  const especialistasAMostrar = useMemo(() => {
-    if (isAdmin) return listaEspecialistas;
-    if (esEmpleado) return listaEspecialistas.filter(esp => esp.id === idLogueado);
-    return listaEspecialistas.filter(esp => esp.activo !== false);
-  }, [isAdmin, esEmpleado, listaEspecialistas, idLogueado]);
-
->>>>>>> main
   // --- FUNCIONES DE NEGOCIO ---
   const mostrarError = (msg) => setAlerta({ visible: true, mensaje: msg });
 
@@ -181,7 +172,6 @@ const especialistasAMostrar = useMemo(() => {
       )}
 
       <div style={styles.gridCards}>
-<<<<<<< HEAD
   {especialistasAMostrar.map(esp => (
     <CardEspecialista 
       key={esp.id} 
@@ -199,21 +189,6 @@ const especialistasAMostrar = useMemo(() => {
     />
   ))}
 </div>
-=======
-        {especialistasAMostrar.map(esp => (
-          <CardEspecialista 
-            key={esp.id} 
-            especialista={esp} 
-            isAdmin={isAdmin || (esEmpleado && esp.id === idLogueado)}
-            alVerHistorial={() => abrirFlujoReserva(esp)} 
-            alGestionarHorarios={() => { setEspecialistaSeleccionado(esp); setGestionAbierta(true); }}
-            alVerHistorialDashboard={() => verHistorialEmpleado(esp)} 
-            alBorrar={borrarEspecialista}
-            alEditar={() => { setEspecialistaAEditar(esp); setFormAbierto(true); }}
-          />
-        ))}
-      </div>
->>>>>>> main
 
       {/* --- MODALES --- */}
       {mostrarServicios && (
