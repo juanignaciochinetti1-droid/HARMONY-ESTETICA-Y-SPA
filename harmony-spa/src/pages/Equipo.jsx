@@ -17,7 +17,7 @@ export default function Equipo() {
   const location = useLocation();
   
   // --- CONFIGURACIÓN DE NEGOCIO ---
-  const LIMITE_EMPLEADOS = 5;
+  const LIMITE_EMPLEADOS = 20;
 
   // 1. Estados de Modales
   const [formAbierto, setFormAbierto] = useState(false);
@@ -64,17 +64,14 @@ export default function Equipo() {
 
   // --- FILTRADO DE VISTA ---
 const especialistasAMostrar = useMemo(() => {
-  if (isAdmin) {
-    // El admin ve a todos
+  if (isAdmin || esEmpleado) {
+    // Tanto el Admin como el Empleado ven a todo el equipo
     return listaEspecialistas;
-  } else if (esEmpleado) {
-    // El empleado solo se ve a sí mismo (según tu lógica actual)
-    return listaEspecialistas.filter(esp => esp.id === idLogueado);
   } else {
-    // Si NO es admin y NO es empleado, es un CLIENTE: ve a todos los activos
+    // El CLIENTE ve solo a los que están activos
     return listaEspecialistas.filter(esp => esp.activo !== false);
   }
-}, [isAdmin, esEmpleado, listaEspecialistas, idLogueado]);
+}, [isAdmin, esEmpleado, listaEspecialistas]);
   // --- FUNCIONES DE NEGOCIO ---
 
   const abrirFlujoReserva = (especialista) => {
@@ -155,8 +152,8 @@ const especialistasAMostrar = useMemo(() => {
     <main style={{ backgroundColor: '#f5eee6', minHeight: '100vh', padding: '60px 20px' }}>
       <p style={styles.subtituloLabel}>PROFESIONALES A TU SERVICIO</p>
       <h2 style={styles.tituloPrincipal}>
-        {esEmpleado ? 'Mi Espacio de Trabajo' : 'Nuestro Equipo'}
-      </h2>
+  {esEmpleado ? 'Nuestro Equipo Profesional' : 'Nuestro Equipo'}
+</h2>
       
       {isAdmin && (
         <p style={styles.contadorCupos}>
@@ -165,20 +162,23 @@ const especialistasAMostrar = useMemo(() => {
       )}
 
       <div style={styles.gridCards}>
-        {especialistasAMostrar.map(esp => (
-          <CardEspecialista 
-            key={esp.id} 
-            especialista={esp} 
-            // El empleado tiene permisos de "Admin" solo sobre su propia tarjeta
-            isAdmin={isAdmin || (esEmpleado && esp.id === idLogueado)}
-            alVerHistorial={() => abrirFlujoReserva(esp)} 
-            alGestionarHorarios={() => { setEspecialistaSeleccionado(esp); setGestionAbierta(true); }}
-            alVerHistorialDashboard={() => verHistorialEmpleado(esp)} 
-            alBorrar={borrarEspecialista}
-            alEditar={() => { setEspecialistaAEditar(esp); setFormAbierto(true); }}
-          />
-        ))}
-      </div>
+  {especialistasAMostrar.map(esp => (
+    <CardEspecialista 
+      key={esp.id} 
+      especialista={esp} 
+      // LÓGICA DE PERMISOS:
+      // Es admin si tiene el rol ADMIN 
+      // O si es EMPLEADO y el ID de la card coincide con su ID de login
+      isAdmin={isAdmin || (esEmpleado && esp.id === idLogueado)}
+      
+      alVerHistorial={() => abrirFlujoReserva(esp)} 
+      alGestionarHorarios={() => { setEspecialistaSeleccionado(esp); setGestionAbierta(true); }}
+      alVerHistorialDashboard={() => verHistorialEmpleado(esp)} 
+      alBorrar={borrarEspecialista}
+      alEditar={() => { setEspecialistaAEditar(esp); setFormAbierto(true); }}
+    />
+  ))}
+</div>
 
       {/* --- MODALES --- */}
       {mostrarServicios && (

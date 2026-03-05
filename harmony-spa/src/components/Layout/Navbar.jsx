@@ -41,11 +41,6 @@ const Navbar = ({ onLoginClick, userRole }) => {
           </a>
         </li>
         
-        {/* --- VISTAS POR ROL (Dinámicas) --- */}
-        {userRole === 'EMPLEADO' && (
-          <li style={styles.menuItem}><Link to="/agenda" style={styles.linkEspecial}>AGENDA</Link></li>
-        )}
-
         {/* --- SECCIÓN DE USUARIO --- */}
         <li style={styles.iconItem}>
           {nombreUsuario ? (
