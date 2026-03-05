@@ -13,6 +13,18 @@ import ModalReporteGlobal from '../components/Especialistas/ModalReporteGlobal';
 import BookingModal from '../components/Modals/BookingModal';
 import ModalHistorialEmpleado from '../components/Especialistas/ModalHistorialEmpleado';
 
+// --- COMPONENTE DE ALERTA INTERNO (VERSIÓN AGRANDADA) ---
+const AlertaPersonalizada = ({ mensaje, alCerrar }) => (
+  <div style={styles.alertOverlay}>
+    <div style={styles.alertModal}>
+      <div style={styles.alertIcon}>!</div>
+      <h3 style={styles.alertTitle}>Atención</h3>
+      <p style={styles.alertText}>{mensaje}</p>
+      <button style={styles.alertBtn} onClick={alCerrar}>ENTENDIDO</button>
+    </div>
+  </div>
+);
+
 export default function Equipo() {
   const location = useLocation();
   
@@ -27,6 +39,9 @@ export default function Equipo() {
   const [reporteAbierto, setReporteAbierto] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [historialAbierto, setHistorialAbierto] = useState(false);
+  
+  // ESTADO PARA LA ALERTA
+  const [alerta, setAlerta] = useState({ visible: false, mensaje: "" });
 
   // 2. Estados de Datos
   const [listaEspecialistas, setListaEspecialistas] = useState([]);
@@ -63,6 +78,7 @@ export default function Equipo() {
   }, [location]);
 
   // --- FILTRADO DE VISTA ---
+<<<<<<< HEAD
 const especialistasAMostrar = useMemo(() => {
   if (isAdmin || esEmpleado) {
     // Tanto el Admin como el Empleado ven a todo el equipo
@@ -72,7 +88,16 @@ const especialistasAMostrar = useMemo(() => {
     return listaEspecialistas.filter(esp => esp.activo !== false);
   }
 }, [isAdmin, esEmpleado, listaEspecialistas]);
+=======
+  const especialistasAMostrar = useMemo(() => {
+    if (isAdmin) return listaEspecialistas;
+    if (esEmpleado) return listaEspecialistas.filter(esp => esp.id === idLogueado);
+    return listaEspecialistas.filter(esp => esp.activo !== false);
+  }, [isAdmin, esEmpleado, listaEspecialistas, idLogueado]);
+
+>>>>>>> main
   // --- FUNCIONES DE NEGOCIO ---
+  const mostrarError = (msg) => setAlerta({ visible: true, mensaje: msg });
 
   const abrirFlujoReserva = (especialista) => {
     setEspecialistaSeleccionado(especialista);
@@ -94,7 +119,7 @@ const especialistasAMostrar = useMemo(() => {
     if (window.confirm("¿Deseas eliminar este especialista? Esto borrará su acceso al sistema.")) {
       const { error } = await supabase.from('users').delete().eq('id', id);
       if (!error) setListaEspecialistas(listaEspecialistas.filter(esp => esp.id !== id));
-      else alert("Error al borrar: " + error.message);
+      else mostrarError("Error al borrar: " + error.message);
     }
   };
 
@@ -120,32 +145,26 @@ const especialistasAMostrar = useMemo(() => {
         setListaEspecialistas(listaEspecialistas.map(esp => esp.id === especialistaAEditar.id ? data[0] : esp));
       } else {
         if (listaEspecialistas.length >= LIMITE_EMPLEADOS) {
-          alert(`Límite alcanzado. Solo puedes tener ${LIMITE_EMPLEADOS} empleados.`);
+          mostrarError(`Límite alcanzado. Solo puedes tener ${LIMITE_EMPLEADOS} empleados.`);
           return;
         }
 
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+        const { error: authError } = await supabase.auth.signUp({
           email: datos.email,
           password: datos.password,
           options: { data: { nombre, rol: 'EMPLEADO' } }
         });
 
         if (authError) throw authError;
-
         setTimeout(() => obtenerEspecialistas(), 1000);
-        alert("¡Empleado creado con éxito!");
+        mostrarError("¡Empleado creado con éxito!");
       }
 
       setFormAbierto(false);
       setEspecialistaAEditar(null);
     } catch (error) {
-      alert("Error en la operación: " + error.message);
+      mostrarError("Error en la operación: " + error.message);
     }
-  };
-
-  const cerrarModalForm = () => {
-    setFormAbierto(false);
-    setEspecialistaAEditar(null);
   };
 
   return (
@@ -162,6 +181,7 @@ const especialistasAMostrar = useMemo(() => {
       )}
 
       <div style={styles.gridCards}>
+<<<<<<< HEAD
   {especialistasAMostrar.map(esp => (
     <CardEspecialista 
       key={esp.id} 
@@ -179,6 +199,21 @@ const especialistasAMostrar = useMemo(() => {
     />
   ))}
 </div>
+=======
+        {especialistasAMostrar.map(esp => (
+          <CardEspecialista 
+            key={esp.id} 
+            especialista={esp} 
+            isAdmin={isAdmin || (esEmpleado && esp.id === idLogueado)}
+            alVerHistorial={() => abrirFlujoReserva(esp)} 
+            alGestionarHorarios={() => { setEspecialistaSeleccionado(esp); setGestionAbierta(true); }}
+            alVerHistorialDashboard={() => verHistorialEmpleado(esp)} 
+            alBorrar={borrarEspecialista}
+            alEditar={() => { setEspecialistaAEditar(esp); setFormAbierto(true); }}
+          />
+        ))}
+      </div>
+>>>>>>> main
 
       {/* --- MODALES --- */}
       {mostrarServicios && (
@@ -192,7 +227,7 @@ const especialistasAMostrar = useMemo(() => {
           alCerrar={() => setCalendarioAbierto(false)} 
           alSeleccionarHorario={(fecha, hora) => {
             if (!servicioSeleccionado) {
-              alert("Por favor, selecciona un servicio primero.");
+              mostrarError("Por favor, selecciona un servicio primero para continuar con tu reserva.");
               setCalendarioAbierto(false);
               setMostrarServicios(true);
               return;
@@ -217,7 +252,7 @@ const especialistasAMostrar = useMemo(() => {
 
       {formAbierto && (
         <ModalFormulario 
-          alCerrar={cerrarModalForm} 
+          alCerrar={() => {setFormAbierto(false); setEspecialistaAEditar(null);}} 
           alGuardar={guardarCambios} 
           especialistaAEditar={especialistaAEditar} 
         />
@@ -225,6 +260,14 @@ const especialistasAMostrar = useMemo(() => {
       
       {gestionAbierta && (
         <ModalGestionarAgenda especialista={especialistaSeleccionado} alCerrar={() => setGestionAbierta(false)} />
+      )}
+
+      {/* RENDER DE ALERTA PERSONALIZADA INTERNA AGRANDADA */}
+      {alerta.visible && (
+        <AlertaPersonalizada 
+          mensaje={alerta.mensaje} 
+          alCerrar={() => setAlerta({ visible: false, mensaje: "" })} 
+        />
       )}
 
       {/* --- ACCIONES ADMIN --- */}
@@ -245,7 +288,7 @@ const especialistasAMostrar = useMemo(() => {
                 setEspecialistaAEditar(null);
                 setFormAbierto(true);
               } else {
-                alert("Has alcanzado el límite de empleados permitido.");
+                mostrarError("Has alcanzado el límite de empleados permitido.");
               }
             }}
           >
@@ -269,17 +312,36 @@ const styles = {
   gridCards: { display: 'flex', gap: '30px', justifyContent: 'center', flexWrap: 'wrap' },
   fabContainer: { position: 'fixed', bottom: '30px', left: '30px', display: 'flex', flexDirection: 'column', gap: '15px', zIndex: 1000 },
   btnReporte: { backgroundColor: '#fff', color: '#8c6d4f', border: '1px solid #f2e9e1', padding: '12px 20px', borderRadius: '25px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', letterSpacing: '1px' },
-  btnAñadir: { 
-    color: 'white', 
-    border: 'none', 
-    width: '55px', 
-    height: '55px', 
-    borderRadius: '50%', 
-    fontSize: '2rem', 
-    display: 'flex', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    boxShadow: '0 6px 20px rgba(197, 163, 125, 0.4)', 
-    transition: 'all 0.3s ease' 
+  btnAñadir: { color: 'white', border: 'none', width: '55px', height: '55px', borderRadius: '50%', fontSize: '2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 6px 20px rgba(197, 163, 125, 0.4)', transition: 'all 0.3s ease' },
+  
+  // --- Estilos de la Alerta Personalizada (VERSIÓN AGRANDADA) ---
+  alertOverlay: { 
+    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', 
+    backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', 
+    alignItems: 'center', zIndex: 10000, backdropFilter: 'blur(5px)' 
+  },
+  alertModal: { 
+    backgroundColor: '#fff', padding: '45px 40px', borderRadius: '40px', 
+    width: '420px', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', 
+    border: '1px solid #f2e9e1' 
+  },
+  alertIcon: { 
+    width: '65px', height: '65px', borderRadius: '50%', border: '2px solid #c5a37d', 
+    color: '#c5a37d', display: 'flex', justifyContent: 'center', alignItems: 'center', 
+    fontSize: '32px', margin: '0 auto 25px', fontWeight: 'bold' 
+  },
+  alertTitle: { 
+    color: '#8c6d4f', fontFamily: "'Playfair Display', serif", marginBottom: '15px', 
+    fontSize: '1.8rem', fontWeight: '400'
+  },
+  alertText: { 
+    color: '#bfa38a', fontSize: '1.05rem', marginBottom: '35px', 
+    lineHeight: '1.6', letterSpacing: '0.3px' 
+  },
+  alertBtn: { 
+    backgroundColor: '#a6835a', color: 'white', border: 'none', 
+    padding: '14px 45px', borderRadius: '30px', fontSize: '0.9rem', 
+    fontWeight: 'bold', cursor: 'pointer', letterSpacing: '1px',
+    boxShadow: '0 4px 15px rgba(166, 131, 90, 0.2)' 
   }
 };
