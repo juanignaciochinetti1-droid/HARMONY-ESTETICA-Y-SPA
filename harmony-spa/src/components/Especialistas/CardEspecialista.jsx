@@ -7,13 +7,16 @@ const CardEspecialista = ({
   alEditar, 
   alGestionarHorarios,
   alVerHistorialDashboard,
+  alCambiarPass, // <--- NUEVA PROP
   isAdmin 
 }) => {
   const { nombre, apellido, especialidad, activo, id } = especialista;
   const [menuAbierto, setMenuAbierto] = useState(false);
 
-  // Verificamos el rol real para acciones destructivas
+  // Verificamos el rol real y el ID del usuario logueado
   const esAdminReal = localStorage.getItem('harmony_rol') === 'ADMIN';
+  const idLogueado = localStorage.getItem('harmony_user_id');
+  const esMiPropioPerfil = id === idLogueado;
 
   return (
     <div style={{
@@ -41,6 +44,16 @@ const CardEspecialista = ({
               <div style={styles.menuItem} onClick={() => { alVerHistorialDashboard(); setMenuAbierto(false); }}>
                 📋 Ver historial/agenda
               </div>
+
+              {/* NUEVA OPCIÓN: Solo para el dueño del perfil */}
+              {esMiPropioPerfil && (
+                <div 
+                  style={{ ...styles.menuItem, borderTop: '1px solid #f2e9e1', fontWeight: 'bold' }} 
+                  onClick={() => { alCambiarPass(); setMenuAbierto(false); }}
+                >
+                  🔑 Cambiar mi clave
+                </div>
+              )}
 
               {/* Opciones EXCLUSIVAS para el Admin real */}
               {esAdminReal && (
@@ -94,6 +107,8 @@ const CardEspecialista = ({
     </div>
   );
 };
+
+// ... estilos (se mantienen igual) ...
 
 const styles = {
   card: {
