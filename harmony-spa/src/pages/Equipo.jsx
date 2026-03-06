@@ -143,32 +143,117 @@ export default function Equipo() {
     }
   };
 
-  const guardarCambios = async (datos) => {
-    try {
-      const partes = datos.nombre.split(' ');
-      const payload = {
-        nombre: partes[0], apellido: partes.slice(1).join(' ') || '',
-        email: datos.email, telefono: datos.telefono, especialidad: datos.especialidad,
-        activo: datos.activo, foto_url: datos.foto
-      };
+  // --- DENTRO DE Equipo.jsx ---
 
-      if (especialistaAEditar) {
-        const { data, error } = await supabase.from('users').update(payload).eq('id', especialistaAEditar.id).select();
-        if (error) throw error;
-        setListaEspecialistas(listaEspecialistas.map(esp => esp.id === especialistaAEditar.id ? data[0] : esp));
-      } else {
-        if (listaEspecialistas.length >= LIMITE_EMPLEADOS) return mostrarError("Límite alcanzado.");
-        const { error: authError } = await supabase.auth.signUp({
-          email: datos.email, password: datos.password, options: { data: { nombre: partes[0], rol: 'EMPLEADO' } }
-        });
-        if (authError) throw authError;
-        setTimeout(() => obtenerEspecialistas(), 1000);
-        mostrarError("¡Empleado creado con éxito!");
+const guardarCambios = async (datos) => {
+  try {
+    // 1. Normalización de datos
+    const nombreNormalizado = datos.nombre.trim();
+    const apellidoNormalizado = datos.apellido.trim();
+    const dniNormalizado = datos.dni?.trim();
+    const emailNormalizado = datos.email.trim().toLowerCase();
+
+    // 2. VERIFICACIÓN DE DUPLICADOS (Local para respuesta rápida)
+    
+    // Duplicado de Identidad (Nombre + Apellido)
+    const existeNombreApellido = listaEspecialistas.some(esp => 
+      esp.id !== especialistaAEditar?.id && 
+      esp.nombre.toLowerCase() === nombreNormalizado.toLowerCase() &&
+      esp.apellido.toLowerCase() === apellidoNormalizado.toLowerCase()
+    );
+
+    if (existeNombreApellido) {
+      return mostrarError(`Ya existe un profesional registrado como ${nombreNormalizado} ${apellidoNormalizado}.`);
+    }
+
+    // Duplicado de DNI
+    const existeDNI = listaEspecialistas.some(esp => 
+      esp.id !== especialistaAEditar?.id && 
+      esp.dni === dniNormalizado
+    );
+
+    if (existeDNI) {
+      return mostrarError(`El DNI ${dniNormalizado} ya se encuentra en nuestra base de datos.`);
+    }
+
+    // Duplicado de Email
+    const existeEmail = listaEspecialistas.some(esp => 
+      esp.id !== especialistaAEditar?.id && 
+      esp.email.toLowerCase() === emailNormalizado
+    );
+
+    if (existeEmail) {
+      return mostrarError(`El correo ${emailNormalizado} ya está asignado a otro perfil.`);
+    }
+
+    // 3. PREPARACIÓN DEL PAYLOAD (Nombres exactos de tus columnas SQL)
+    const payload = {
+      nombre: nombreNormalizado,
+      apellido: apellidoNormalizado,
+      email: emailNormalizado,
+      telefono: datos.telefono,
+      especialidad: datos.especialidad, // Aquí se guarda lo que saldrá en la Card
+      activo: datos.activo,
+      foto_url: datos.foto, // React usa 'foto', Supabase usa 'foto_url'
+      dni: dniNormalizado 
+    };
+
+    if (especialistaAEditar) {
+      // --- LÓGICA DE EDICIÓN ---
+      const { data, error } = await supabase
+        .from('users')
+        .update(payload)
+        .eq('id', especialistaAEditar.id)
+        .select();
+
+      if (error) throw error;
+      
+      // Actualizamos el estado local para que la Card cambie al instante
+      setListaEspecialistas(listaEspecialistas.map(esp => 
+        esp.id === especialistaAEditar.id ? data[0] : esp
+      ));
+      
+      mostrarError("Perfil actualizado con éxito.");
+
+    } else {
+      // --- LÓGICA DE CREACIÓN (NUEVO EMPLEADO) ---
+      if (listaEspecialistas.length >= LIMITE_EMPLEADOS) {
+        return mostrarError("Límite de staff alcanzado.");
       }
-      setFormAbierto(false);
-      setEspecialistaAEditar(null);
-    } catch (error) { mostrarError("Error: " + error.message); }
-  };
+
+      // ... dentro de guardarCambios en el bloque 'else' (nuevo empleado)
+// Dentro de tu función guardarCambios...
+const { data: authData, error: authError } = await supabase.auth.signUp({
+  email: emailNormalizado,
+  password: datos.password,
+  options: { 
+    data: { 
+      nombre: nombreNormalizado, 
+      apellido: apellidoNormalizado,
+      especialidad: datos.especialidad,
+      dni: dniNormalizado,
+      telefono: datos.telefono, // <--- DEBE COINCIDIR CON EL ->>'telefono' DEL SQL
+      rol: 'EMPLEADO' 
+    } 
+  }
+});
+
+      if (authError) throw authError;
+
+      // El trigger 'handle_new_user' de tu SQL se encargará de insertar en public.users
+      // pero como a veces tarda un segundo, refrescamos la lista
+      setTimeout(() => obtenerEspecialistas(), 1500);
+      mostrarError("¡Acceso creado! El empleado ya puede loguearse.");
+    }
+
+    // Limpieza de estados y cierre de modal
+    setFormAbierto(false);
+    setEspecialistaAEditar(null);
+
+  } catch (error) { 
+    mostrarError("No se pudo completar la operación: " + error.message); 
+  }
+};
 
   return (
     <main style={{ backgroundColor: '#f5eee6', minHeight: '100vh', padding: '60px 20px' }}>

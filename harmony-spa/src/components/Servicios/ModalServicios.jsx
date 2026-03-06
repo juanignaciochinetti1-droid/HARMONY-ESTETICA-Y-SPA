@@ -35,8 +35,13 @@ const ModalServicios = ({ alSeleccionar, alCerrar }) => {
             servicios.map((s) => (
               <div key={s.id} style={styles.item} onClick={() => alSeleccionar(s)}>
                 <div style={styles.info}>
-                  <span style={styles.nombre}>{s.nombre}</span>
-                  <p style={styles.detalle}>{s.duracion_min} min | ${Number(s.precio).toLocaleString('es-AR')}</p>
+                  {/* MEJORA: Forzamos que el nombre se vea prolijo (Capitalize) */}
+                  <span style={{...styles.nombre, textTransform: 'capitalize'}}>
+                    {s.nombre.toLowerCase()}
+                  </span>
+                  <p style={styles.detalle}>
+                    {s.duracion_min} min | ${Number(s.precio).toLocaleString('es-AR')}
+                  </p>
                 </div>
                 <span style={styles.flecha}>❯</span>
               </div>
@@ -64,7 +69,7 @@ const styles = {
   },
   titulo: { 
     color: '#8c6d4f', fontSize: '1.6rem', fontWeight: '400', 
-    marginBottom: '5px', fontFamily: 'serif' 
+    marginBottom: '5px', fontFamily: "'Playfair Display', serif" 
   },
   subtitulo: { 
     color: '#bfa38a', fontSize: '0.6rem', letterSpacing: '2px', 

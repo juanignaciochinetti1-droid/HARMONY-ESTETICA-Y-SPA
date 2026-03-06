@@ -6,28 +6,20 @@ import ModalFiltroEspecialistas from '../components/Servicios/ModalFiltroEspecia
 export default function Servicios() {
   const [servicios, setServicios] = useState([]);
   const [cargando, setCargando] = useState(true);
-  
-  // ESTADOS PARA EL FLUJO DE RESERVA
   const [servicioEnProceso, setServicioEnProceso] = useState(null);
   const [mostrarFiltro, setMostrarFiltro] = useState(false);
-
-  // ESTADOS PARA GESTIÓN (EDITAR/ELIMINAR)
   const [menuAbierto, setMenuAbierto] = useState(null); 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [formData, setFormData] = useState({ id: null, nombre: '', descripcion: '', precio: '', duracion_min: '' });
 
-  // --- SEGURIDAD DE ROL ---
   const rolGuardado = localStorage.getItem('harmony_rol');
-  const isAdmin = rolGuardado !== null && rolGuardado === 'ADMIN';
-
+  const isAdmin = rolGuardado === 'ADMIN';
   const navigate = useNavigate();
 
-  useEffect(() => {
-    obtenerServicios();
-  }, []);
+  useEffect(() => { obtenerServicios(); }, []);
 
   const obtenerServicios = async () => {
-    const { data, error } = await supabase.from('servicios').select('*');
+    const { data, error } = await supabase.from('servicios').select('*').order('nombre', { ascending: true });
     if (!error) setServicios(data);
     setCargando(false);
   };
@@ -39,44 +31,39 @@ export default function Servicios() {
 
   const finalizarSeleccion = (especialista) => {
     setMostrarFiltro(false);
-    navigate('/equipo', { 
-      state: { 
-        servicioElegido: servicioEnProceso,
-        especialistaElegido: especialista,
-        abrirCalendario: true 
-      } 
-    });
+    navigate('/equipo', { state: { servicioElegido: servicioEnProceso, especialistaElegido: especialista, abrirCalendario: true } });
   };
 
   const eliminarServicio = async (id) => {
     setMenuAbierto(null);
     if (window.confirm("¿Estás seguro de que deseas eliminar este servicio?")) {
-      try {
-        const { error } = await supabase.from('servicios').delete().eq('id', id);
-        if (error) throw error;
-        setServicios(servicios.filter(s => s.id !== id));
-      } catch (err) {
-        alert("Error: " + err.message);
-      }
+      const { error } = await supabase.from('servicios').delete().eq('id', id);
+      if (!error) setServicios(servicios.filter(s => s.id !== id));
+      else alert("Error: " + error.message);
     }
   };
 
   const prepararEdicion = (servicio) => {
-    setFormData({
-      id: servicio.id,
-      nombre: servicio.nombre,
-      descripcion: servicio.descripcion,
-      precio: servicio.precio,
-      duracion_min: servicio.duracion_min
-    });
+    setFormData({ id: servicio.id, nombre: servicio.nombre, descripcion: servicio.descripcion, precio: servicio.precio, duracion_min: servicio.duracion_min });
     setMenuAbierto(null);
     setModalAbierto(true);
   };
 
+  // --- LÓGICA DE GUARDADO CON VALIDACIONES ---
   const guardarCambios = async (e) => {
     e.preventDefault();
+
+    // 1. Bloqueo de precios y duración negativos
+    if (parseFloat(formData.precio) <= 0) return alert("El precio debe ser mayor a 0.");
+    if (parseInt(formData.duracion_min) <= 0) return alert("La duración debe ser mayor a 0.");
+
+    // 2. Bloqueo de nombres duplicados
+    const nombreNormalizado = formData.nombre.trim().toLowerCase();
+    const yaExiste = servicios.some(s => s.id !== formData.id && s.nombre.toLowerCase().trim() === nombreNormalizado);
+    if (yaExiste) return alert("Ya existe un servicio con ese nombre.");
+
     const payload = {
-      nombre: formData.nombre,
+      nombre: formData.nombre.trim(),
       descripcion: formData.descripcion,
       precio: parseFloat(formData.precio),
       duracion_min: parseInt(formData.duracion_min)
@@ -98,13 +85,8 @@ export default function Servicios() {
       <header style={styles.header}>
         <h1 style={styles.tituloHeader}>Nuestros Servicios</h1>
         <p style={styles.subtituloHeader}>RESERVA CON EL 30% DE SEÑA</p>
-        
-        {/* --- PROTECCIÓN: Botón de Agregar solo para Admin --- */}
         {isAdmin && (
-          <button 
-            style={styles.btnNuevo} 
-            onClick={() => { setFormData({id: null, nombre:'', descripcion:'', precio:'', duracion_min:''}); setModalAbierto(true); }}
-          >
+          <button style={styles.btnNuevo} onClick={() => { setFormData({id: null, nombre:'', descripcion:'', precio:'', duracion_min:''}); setModalAbierto(true); }}>
             + AGREGAR SERVICIO
           </button>
         )}
@@ -113,16 +95,9 @@ export default function Servicios() {
       <div style={styles.grid}>
         {servicios.map((s) => (
           <div key={s.id} style={styles.card}>
-            
-            {/* --- PROTECCIÓN: Menú de gestión solo para Admin --- */}
             {isAdmin && (
               <div style={styles.menuContenedor}>
-                <button 
-                  style={styles.optionsBadge} 
-                  onClick={() => setMenuAbierto(menuAbierto === s.id ? null : s.id)}
-                >
-                  ⋮
-                </button>
+                <button style={styles.optionsBadge} onClick={() => setMenuAbierto(menuAbierto === s.id ? null : s.id)}>⋮</button>
                 {menuAbierto === s.id && (
                   <div style={styles.dropdown}>
                     <button style={styles.dropdownItem} onClick={() => prepararEdicion(s)}>✏️ Editar</button>
@@ -131,55 +106,26 @@ export default function Servicios() {
                 )}
               </div>
             )}
-
-            <h2 style={styles.servicioNombre}>{s.nombre}</h2>
+            <h2 style={{...styles.servicioNombre, textTransform: 'capitalize'}}>{s.nombre.toLowerCase()}</h2>
             <p style={styles.servicioDescripcion}>{s.descripcion}</p>
             <div style={styles.infoContenedor}>
               <p style={styles.duracionTexto}>DURACIÓN: {s.duracion_min} MIN</p>
               <p style={styles.precioTexto}>${Number(s.precio).toLocaleString('es-AR')}</p>
             </div>
-            <button style={styles.btnReservar} onClick={() => iniciarReserva(s)}>
-              Reservar Turno
-            </button>
+            <button style={styles.btnReservar} onClick={() => iniciarReserva(s)}>Reservar Turno</button>
           </div>
         ))}
       </div>
 
-      {/* MODAL DE FORMULARIO (Protegido por el botón que lo abre) */}
       {modalAbierto && (
         <div style={styles.overlay}>
           <div style={styles.modal}>
             <h2 style={{color: '#8c6d4f', marginBottom: '20px'}}>{formData.id ? 'Editar Servicio' : 'Nuevo Servicio'}</h2>
             <form onSubmit={guardarCambios} style={styles.form}>
-              <input 
-                style={styles.input} 
-                placeholder="Nombre del servicio" 
-                value={formData.nombre} 
-                onChange={e => setFormData({...formData, nombre: e.target.value})} 
-                required 
-              />
-              <textarea 
-                style={{...styles.input, minHeight: '80px'}} 
-                placeholder="Descripción" 
-                value={formData.descripcion} 
-                onChange={e => setFormData({...formData, descripcion: e.target.value})} 
-              />
-              <input 
-                style={styles.input} 
-                type="number" 
-                placeholder="Precio" 
-                value={formData.precio} 
-                onChange={e => setFormData({...formData, precio: e.target.value})} 
-                required 
-              />
-              <input 
-                style={styles.input} 
-                type="number" 
-                placeholder="Duración (minutos)" 
-                value={formData.duracion_min} 
-                onChange={e => setFormData({...formData, duracion_min: e.target.value})} 
-                required 
-              />
+              <input style={styles.input} placeholder="Nombre" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} required />
+              <textarea style={{...styles.input, minHeight: '80px'}} placeholder="Descripción" value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} />
+              <input style={styles.input} type="number" placeholder="Precio" value={formData.precio} onChange={e => setFormData({...formData, precio: e.target.value})} required />
+              <input style={styles.input} type="number" placeholder="Duración (min)" value={formData.duracion_min} onChange={e => setFormData({...formData, duracion_min: e.target.value})} required />
               <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
                 <button type="button" onClick={() => setModalAbierto(false)} style={styles.btnEliminar}>Cancelar</button>
                 <button type="submit" style={styles.btnReservar}>Guardar</button>
@@ -190,17 +136,12 @@ export default function Servicios() {
       )}
 
       {mostrarFiltro && (
-        <ModalFiltroEspecialistas 
-          servicio={servicioEnProceso}
-          alCerrar={() => setMostrarFiltro(false)}
-          alSeleccionar={finalizarSeleccion}
-        />
+        <ModalFiltroEspecialistas servicio={servicioEnProceso} alCerrar={() => setMostrarFiltro(false)} alSeleccionar={finalizarSeleccion} />
       )}
     </main>
   );
 }
 
-// ... Estilos (Se mantienen los tuyos, están perfectos) ...
 const styles = {
   container: { backgroundColor: '#f3ece4', minHeight: '100vh', padding: '80px 20px', fontFamily: "'Playfair Display', serif" },
   header: { textAlign: 'center', marginBottom: '60px' },
