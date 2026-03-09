@@ -9,19 +9,23 @@ const Navbar = ({ onLoginClick, userRole }) => {
   const nombreUsuario = localStorage.getItem('harmony_user');
 
   const cerrarSesion = async () => {
-    // 1. Cerramos sesión en Supabase (opcional pero recomendado)
+    // 1. Cerramos sesión en Supabase
     await supabase.auth.signOut();
     
     // 2. Limpiamos TODO el localStorage (Rol, ID, Nombre)
     localStorage.clear();
     
-    // 3. Redirigimos al inicio y forzamos recarga para resetear los estados de Admin en toda la app
+    // 3. Redirigimos al inicio y forzamos recarga
     window.location.href = "/"; 
   };
 
   return (
     <nav style={styles.nav}>
-      <div style={styles.logoContainer}>
+      {/* Logo con link al inicio */}
+      <div 
+        style={{...styles.logoContainer, cursor: 'pointer'}} 
+        onClick={() => navigate('/')}
+      >
         <img src="/flor-logo.png" alt="Harmony Logo" style={styles.logoImg} />
         <div>
           <h1 style={styles.logoText}>HARMONY</h1>
@@ -34,6 +38,11 @@ const Navbar = ({ onLoginClick, userRole }) => {
         <li style={styles.menuItem}><Link to="/servicios" style={styles.linkStyle}>SERVICIOS</Link></li>
         <li style={styles.menuItem}><Link to="/equipo" style={styles.linkStyle}>EQUIPO</Link></li>
         <li style={styles.menuItem}><Link to="/vouchers" style={styles.linkStyle}>VOUCHERS</Link></li>
+        
+        {/* Ruta corregida a /mis-turnos */}
+        <li style={styles.menuItem}>
+          <Link to="/mis-turnos" style={styles.linkStyle}>MIS TURNOS</Link>
+        </li>
 
         <li style={styles.menuItem}>
           <a href="https://www.instagram.com/harmony.maguiveron" target="_blank" rel="noopener noreferrer" style={styles.linkStyle}>
@@ -82,13 +91,6 @@ const styles = {
   menuItem: { fontSize: '0.7rem', color: '#a6835a', cursor: 'pointer', letterSpacing: '1px', fontWeight: '500' },
   iconItem: { color: '#a6835a', cursor: 'pointer', marginLeft: '10px' },
   linkStyle: { textDecoration: 'none', color: 'inherit' },
-  linkEspecial: { 
-    textDecoration: 'none', 
-    color: '#8c6d4f', 
-    fontWeight: 'bold', 
-    borderBottom: '1px solid #8c6d4f',
-    paddingBottom: '2px'
-  },
   userFlex: { display: 'flex', alignItems: 'center', gap: '15px', borderLeft: '1px solid #f2e9e1', paddingLeft: '20px' },
   userInfo: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end' },
   userName: { fontSize: '0.7rem', color: '#8c6d4f', fontWeight: 'bold', textTransform: 'uppercase' },

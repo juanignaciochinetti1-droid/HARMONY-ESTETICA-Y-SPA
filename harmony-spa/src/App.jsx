@@ -6,6 +6,7 @@ import Equipo from './pages/Equipo';
 import Servicios from './pages/Servicios';
 import Vouchers from './pages/Vouchers';
 import LoginModal from './components/Layout/LoginModal';
+import MisTurnos from './components/Clientes/MisTurnos';
 
 function App() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -24,6 +25,7 @@ function App() {
         <Route path="/equipo" element={<Equipo />} />
         <Route path="/servicios" element={<Servicios />} />
         <Route path="/vouchers" element={<Vouchers />} />
+        <Route path="/mis-turnos" element={<MisTurnos />} />
 
         {/* VISTAS TEMPORALES (Sin archivos externos para que no de error) */}
         {userRole === 'EMPLEADO' && (

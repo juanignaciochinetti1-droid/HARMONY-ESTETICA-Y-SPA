@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../../lib/supabaseClient'; // Asegúrate de que la ruta sea correcta
+import { supabase } from '../../lib/supabaseClient';
 
 const ModalCompraVoucher = ({ voucher, alCerrar }) => {
   const [datos, setDatos] = useState({ de: '', para: '', telefonoPara: '', mensaje: '' });
@@ -7,18 +7,34 @@ const ModalCompraVoucher = ({ voucher, alCerrar }) => {
 
   const enviarSolicitud = async (e) => {
     e.preventDefault();
+    
+    // --- NUEVAS VALIDACIONES ---
+    
+    // 1. Limpieza de teléfono (Solo números)
+    const telLimpio = datos.telefonoPara.replace(/\D/g, '');
+    if (telLimpio.length < 8) {
+      alert("Por favor, ingresa un número de teléfono válido (mínimo 8 dígitos).");
+      return;
+    }
+
+    // 2. Validación de nombres (Mínimo 3 caracteres)
+    if (datos.de.trim().length < 3 || datos.para.trim().length < 3) {
+      alert("Por favor, completa los nombres de remitente y destinatario.");
+      return;
+    }
+
     setCargando(true);
 
     try {
-      // 1. Registro en la base de datos (Tabla: vouchers_solicitudes)
+      // 1. Registro en la base de datos con datos limpios
       const { error: dbError } = await supabase
         .from('vouchers_solicitudes')
         .insert([{
           voucher_id: voucher.id,
-          remitente: datos.de,
-          destinatario: datos.para,
-          telefono_destinatario: datos.telefonoPara,
-          mensaje: datos.mensaje,
+          remitente: datos.de.trim(),
+          destinatario: datos.para.trim(),
+          telefono_destinatario: telLimpio, // Guardamos solo los números
+          mensaje: datos.mensaje.trim(),
           estado: 'PENDIENTE_PAGO'
         }]);
 
@@ -31,9 +47,9 @@ Quisiera un *Voucher de Regalo*:
 ------------------------------
 🎁 *Plan:* ${voucher.nombre}
 💰 *Valor:* $${Number(voucher.precio).toLocaleString('es-AR')}
-✍️ *De:* ${datos.de}
-👤 *Para:* ${datos.para}
-📱 *Tel. Recibe:* ${datos.telefonoPara}
+✍️ *De:* ${datos.de.trim()}
+👤 *Para:* ${datos.para.trim()}
+📱 *Tel. Recibe:* ${telLimpio}
 💌 *Mensaje:* ${datos.mensaje || "Sin mensaje especial"}
 ------------------------------
 ¿Me podrían indicar los pasos para realizar el pago? ¡Gracias!`;
@@ -83,10 +99,11 @@ Quisiera un *Voucher de Regalo*:
           <input 
             type="tel"
             style={styles.input} 
-            placeholder="Ej: 3537123456" 
+            placeholder="Ej: 3537123456 (Solo números)" 
             required 
             value={datos.telefonoPara} 
-            onChange={e => setDatos({...datos, telefonoPara: e.target.value})} 
+            // VALIDACIÓN EN TIEMPO REAL
+            onChange={e => setDatos({...datos, telefonoPara: e.target.value.replace(/\D/g, '')})} 
           />
 
           <label style={styles.label}>MENSAJE (OPCIONAL)</label>
@@ -101,8 +118,6 @@ Quisiera un *Voucher de Regalo*:
             type="submit" 
             style={styles.btnPrimario} 
             disabled={cargando}
-            onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
-            onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
           >
             {cargando ? 'PROCESANDO...' : 'SOLICITAR POR WHATSAPP'}
           </button>

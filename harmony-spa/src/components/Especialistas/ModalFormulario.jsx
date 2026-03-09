@@ -7,35 +7,32 @@ const ModalFormulario = ({ alCerrar, alGuardar, especialistaAEditar }) => {
     dni: '',
     especialidad: '',
     email: '',
-    telefono: '', // <--- Recuperado
+    telefono: '',
     password: '',
     activo: true,
-    foto: '' // <--- Recuperado
+    foto: ''
   });
 
-  // --- DENTRO DE ModalFormulario.jsx ---
-
-useEffect(() => {
-  if (especialistaAEditar) {
-    setFormData({
-      nombre: especialistaAEditar.nombre || '',
-      apellido: especialistaAEditar.apellido || '',
-      dni: especialistaAEditar.dni || '',
-      especialidad: especialistaAEditar.especialidad || '',
-      email: especialistaAEditar.email || '',
-      telefono: especialistaAEditar.telefono || '', // Mapeo directo de la columna
-      password: '', 
-      activo: especialistaAEditar.activo ?? true,
-      foto: especialistaAEditar.foto_url || ''
-    });
-  } else {
-    // Reset para nuevo empleado
-    setFormData({
-      nombre: '', apellido: '', dni: '', especialidad: '',
-      email: '', telefono: '', password: '', activo: true, foto: ''
-    });
-  }
-}, [especialistaAEditar]);
+  useEffect(() => {
+    if (especialistaAEditar) {
+      setFormData({
+        nombre: especialistaAEditar.nombre || '',
+        apellido: especialistaAEditar.apellido || '',
+        dni: especialistaAEditar.dni || '',
+        especialidad: especialistaAEditar.especialidad || '',
+        email: especialistaAEditar.email || '',
+        telefono: especialistaAEditar.telefono || '',
+        password: '', 
+        activo: especialistaAEditar.activo ?? true,
+        foto: especialistaAEditar.foto_url || ''
+      });
+    } else {
+      setFormData({
+        nombre: '', apellido: '', dni: '', especialidad: '',
+        email: '', telefono: '', password: '', activo: true, foto: ''
+      });
+    }
+  }, [especialistaAEditar]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -62,12 +59,40 @@ useEffect(() => {
 
           <div style={styles.row}>
             <div style={styles.campo}>
-              <label style={styles.label}>DNI (ÚNICO)</label>
-              <input style={styles.input} type="text" value={formData.dni} onChange={(e) => setFormData({...formData, dni: e.target.value})} required />
+              <label style={styles.label}>DNI (ÚNICO Y FIJO)</label>
+              <input 
+                style={{
+                  ...styles.input, 
+                  backgroundColor: especialistaAEditar ? '#f5f5f5' : '#fdfcfb',
+                  color: especialistaAEditar ? '#999' : '#555',
+                  cursor: especialistaAEditar ? 'not-allowed' : 'text'
+                }} 
+                type="text" 
+                value={formData.dni} 
+                // VALIDACIÓN: Solo números y bloqueado si es edición
+                onChange={(e) => {
+                  if (especialistaAEditar) return;
+                  const soloNumeros = e.target.value.replace(/\D/g, '');
+                  setFormData({...formData, dni: soloNumeros});
+                }} 
+                readOnly={!!especialistaAEditar}
+                placeholder="Solo números"
+                required 
+              />
             </div>
             <div style={styles.campo}>
               <label style={styles.label}>TELÉFONO</label>
-              <input style={styles.input} type="text" value={formData.telefono} onChange={(e) => setFormData({...formData, telefono: e.target.value})} />
+              <input 
+                style={styles.input} 
+                type="text" 
+                value={formData.telefono} 
+                // VALIDACIÓN: Solo números
+                onChange={(e) => {
+                  const soloNumeros = e.target.value.replace(/\D/g, '');
+                  setFormData({...formData, telefono: soloNumeros});
+                }} 
+                placeholder="Solo números"
+              />
             </div>
           </div>
 
