@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom'; // Importante para recibir el ID
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 
 const BookingModal = ({ isOpen, onClose, selectedTurno, especialista, servicio, onSuccess }) => {
@@ -8,7 +8,6 @@ const BookingModal = ({ isOpen, onClose, selectedTurno, especialista, servicio, 
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ nombre: '', telefono: '', email: '' });
 
-  // Capturamos si viene de una reprogramación desde el estado de la ruta
   const reprogramandoId = location.state?.reprogramandoId;
 
   useEffect(() => {
@@ -21,85 +20,52 @@ const BookingModal = ({ isOpen, onClose, selectedTurno, especialista, servicio, 
 
   const validarPaso2 = () => {
     const { nombre, telefono, email } = formData;
-    if (!nombre.trim()) {
-      alert("Por favor, ingresa tu nombre completo.");
-      return false;
-    }
+    if (!nombre.trim()) { alert("Por favor, ingresa tu nombre completo."); return false; }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      alert("Por favor, ingresa un correo electrónico válido.");
-      return false;
-    }
-    if (telefono.length < 8) {
-      alert("El teléfono debe tener al menos 8 números.");
-      return false;
-    }
+    if (!emailRegex.test(email.trim())) { alert("Por favor, ingresa un correo electrónico válido."); return false; }
+    if (telefono.length < 8) { alert("El teléfono debe tener al menos 8 números."); return false; }
     return true;
   };
 
   const handleFinalizarReserva = async () => {
-    if (!validarPaso2()) return;
+    if (!reprogramandoId && !validarPaso2()) return;
 
     setLoading(true);
     try {
-      const emailLimpio = formData.email.trim().toLowerCase();
-      
-      // 1. Lógica de Cliente (Buscar o Crear)
-      let { data: cliente } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', emailLimpio)
-        .maybeSingle();
-
-      let clienteId = cliente?.id;
-
-      if (!clienteId) {
-        const partes = formData.nombre.trim().split(" ");
-        const nombreSolo = partes[0] || "Cliente";
-        const apellidoSolo = partes.slice(1).join(" ") || "Nuevo";
-
-        const { data: nuevo, error: errorCreacion } = await supabase
-          .from('users')
-          .insert([{ 
-            nombre: nombreSolo, 
-            apellido: apellidoSolo, 
-            email: emailLimpio, 
-            telefono: formData.telefono, 
-            rol: 'CLIENTE',
-            password_hash: 'invitado_spa', 
-            activo: true 
-          }])
-          .select()
-          .single();
-        
-        if (errorCreacion) throw errorCreacion;
-        clienteId = nuevo.id;
-      }
-
-      // 2. Lógica de Turno (¿Es nuevo o es cambio de fecha?)
       if (reprogramandoId) {
-        // ESCENARIO: Actualizar turno existente
+        // --- ESCENARIO A: REPROGRAMACIÓN ---
         const { error: errorUpdate } = await supabase
           .from('turnos')
           .update({
             fecha: selectedTurno.fecha,
             hora: selectedTurno.hora,
-            estado: 'PENDIENTE' // Vuelve a pendiente para validación de Admin
+            estado: 'REPROGRAMADO', // <--- CAMBIO AQUÍ: Nuevo estado para el reporte
+            ya_reprogramado: true 
           })
           .eq('id', reprogramandoId);
 
         if (errorUpdate) throw errorUpdate;
       } else {
-        // ESCENARIO: Insertar turno nuevo
-        const { error: errorTurno } = await supabase.from('turnos').insert([{
-          cliente_id: clienteId,
-          empleado_id: especialista.id,
-          servicio_id: servicio.id,
-          fecha: selectedTurno.fecha,
-          hora: selectedTurno.hora,
-          estado: 'PENDIENTE'
-        }]);
+        // --- ESCENARIO B: RESERVA NUEVA ---
+        const emailLimpio = formData.email.trim().toLowerCase();
+        let { data: cliente } = await supabase.from('users').select('id').eq('email', emailLimpio).maybeSingle();
+        let clienteId = cliente?.id;
 
+        if (!clienteId) {
+          const partes = formData.nombre.trim().split(" ");
+          const { data: nuevo, error: errorCreacion } = await supabase.from('users').insert([{ 
+            nombre: partes[0] || "Cliente", apellido: partes.slice(1).join(" ") || "Nuevo", 
+            email: emailLimpio, telefono: formData.telefono, rol: 'CLIENTE',
+            password_hash: 'invitado_spa', activo: true 
+          }]).select().single();
+          if (errorCreacion) throw errorCreacion;
+          clienteId = nuevo.id;
+        }
+
+        const { error: errorTurno } = await supabase.from('turnos').insert([{
+          cliente_id: clienteId, empleado_id: especialista.id, servicio_id: servicio.id,
+          fecha: selectedTurno.fecha, hora: selectedTurno.hora, estado: 'PENDIENTE'
+        }]);
         if (errorTurno) throw errorTurno;
       }
 
@@ -118,30 +84,54 @@ const BookingModal = ({ isOpen, onClose, selectedTurno, especialista, servicio, 
 
   const generarLinkWhatsApp = () => {
     const numeroTelefono = "543537XXXXXX"; 
-    const texto = reprogramandoId 
-      ? `¡Hola Harmony! Soy ${formData.nombre}. Acabo de *reprogramar* mi turno de ${servicio?.nombre} para el ${selectedTurno?.fecha} a las ${selectedTurno?.hora}hs.`
-      : `¡Hola Harmony! Soy ${formData.nombre}. Acabo de transferir la seña para mi turno de ${servicio?.nombre} (${selectedTurno?.fecha} a las ${selectedTurno?.hora}hs). ¡Adjunto el comprobante! ✨`;
+    let texto = "";
     
+    if (reprogramandoId) {
+      texto = `*SOLICITUD DE REPROGRAMACIÓN* ✨
+Hola Harmony! 👋 
+He realizado la reprogramación de mi turno:
+🗓️ *Nueva Fecha:* ${selectedTurno?.fecha}
+⏰ *Nueva Hora:* ${selectedTurno?.hora.substring(0, 5)} hs
+🌿 *Servicio:* ${servicio?.nombre}
+👤 *Especialista:* ${especialista?.nombre}
+
+¡Muchas gracias!`;
+    } else {
+      texto = `*NUEVA RESERVA* ✨
+Hola Harmony! Soy ${formData.nombre}.
+Acabo de reservar un turno para:
+🌿 *Servicio:* ${servicio?.nombre}
+🗓️ *Día:* ${selectedTurno?.fecha}
+⏰ *Hora:* ${selectedTurno?.hora.substring(0, 5)} hs
+Adjunto el comprobante de la seña abajo. 👇`;
+    }
     return `https://wa.me/${numeroTelefono}?text=${encodeURIComponent(texto)}`;
   };
 
   return (
     <div style={styles.overlay}>
       <div style={styles.modal}>
-        
         {step === 1 && (
           <div style={styles.container}>
-            <h2 style={styles.tituloDorado}>{reprogramandoId ? 'Nueva Fecha' : 'Verifica tu Turno'}</h2>
-            <p style={styles.subtitulo}>Confirma los nuevos detalles de tu cita.</p>
+            <h2 style={styles.tituloDorado}>{reprogramandoId ? 'Confirmar Cambio' : 'Verifica tu Turno'}</h2>
+            <p style={styles.subtitulo}>
+              {reprogramandoId ? '¿Deseas mover tu turno a esta nueva fecha?' : 'Confirma los detalles de tu cita.'}
+            </p>
             <div style={styles.cajaDatos}>
               <p style={styles.dato}>✨ <strong>Servicio:</strong> {servicio?.nombre}</p>
               <p style={styles.dato}>👤 <strong>Especialista:</strong> {especialista?.nombre}</p>
               <p style={styles.dato}>📅 <strong>Fecha:</strong> {selectedTurno?.fecha}</p>
-              <p style={styles.dato}>⏰ <strong>Hora:</strong> {selectedTurno?.hora} hs</p>
+              <p style={styles.dato}>⏰ <strong>Hora:</strong> {selectedTurno?.hora.substring(0, 5)} hs</p>
             </div>
             <div style={styles.flexButtons}>
               <button style={styles.btnSecundario} onClick={onClose}>MODIFICAR</button>
-              <button style={styles.btnPrimario} onClick={() => setStep(2)}>ES CORRECTO</button>
+              <button 
+                style={styles.btnPrimario} 
+                onClick={() => reprogramandoId ? handleFinalizarReserva() : setStep(2)}
+                disabled={loading}
+              >
+                {loading ? 'PROCESANDO...' : (reprogramandoId ? 'CONFIRMAR CAMBIO' : 'ES CORRECTO')}
+              </button>
             </div>
           </div>
         )}
@@ -158,7 +148,7 @@ const BookingModal = ({ isOpen, onClose, selectedTurno, especialista, servicio, 
             <div style={styles.flexButtons}>
               <button style={styles.btnSecundario} onClick={() => setStep(1)}>ATRÁS</button>
               <button style={styles.btnPrimario} onClick={handleFinalizarReserva} disabled={loading}>
-                {loading ? 'PROCESANDO...' : 'CONFIRMAR CAMBIO'}
+                {loading ? 'PROCESANDO...' : 'CONFIRMAR RESERVA'}
               </button>
             </div>
           </div>
@@ -167,10 +157,10 @@ const BookingModal = ({ isOpen, onClose, selectedTurno, especialista, servicio, 
         {step === 3 && (
           <div style={{ ...styles.container, textAlign: 'center' }}>
             <div style={styles.circuloExito}>✓</div>
-            <h2 style={styles.tituloDorado}>{reprogramandoId ? '¡Cambio Exitoso!' : '¡Reserva Registrada!'}</h2>
+            <h2 style={styles.tituloDorado}>{reprogramandoId ? '¡Cambio Realizado!' : '¡Reserva Registrada!'}</h2>
             <p style={styles.subtitulo}>
               {reprogramandoId 
-                ? 'Tu nueva fecha ha sido registrada. Por favor, avísanos por WhatsApp.'
+                ? 'Tu turno ha sido actualizado. El spa ha sido notificado del cambio.'
                 : 'Realiza la transferencia para confirmar tu turno:'}
             </p>
             
@@ -191,7 +181,7 @@ const BookingModal = ({ isOpen, onClose, selectedTurno, especialista, servicio, 
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
               <a href={generarLinkWhatsApp()} target="_blank" rel="noopener noreferrer" style={styles.btnWhatsApp}>
-                {reprogramandoId ? 'NOTIFICAR CAMBIO POR WHATSAPP' : 'ENVIAR COMPROBANTE POR WHATSAPP'}
+                {reprogramandoId ? 'AVISAR CAMBIO POR WHATSAPP' : 'ENVIAR COMPROBANTE'}
               </a>
               <button style={styles.btnFinalizarSimple} onClick={cerrarTodoAlFinalizar}>Salir</button>
             </div>

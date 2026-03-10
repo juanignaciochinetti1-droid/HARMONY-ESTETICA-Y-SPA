@@ -27,7 +27,7 @@ const ModalReporteGlobal = ({ alCerrar }) => {
     const { data, error } = await supabase
       .from('turnos')
       .select(`
-        id, fecha, hora, estado,
+        id, fecha, hora, estado, ya_reprogramado,
         cliente:cliente_id (nombre, apellido),
         especialista:empleado_id (nombre, apellido),
         servicios (nombre, precio)
@@ -74,8 +74,9 @@ const ModalReporteGlobal = ({ alCerrar }) => {
 
   const exportarPDF = () => {
     const doc = new jsPDF();
+    // Sumamos CONFIRMADOS y REPROGRAMADOS (asumimos que la seña ya está paga)
     const totalIngresos = turnosFiltrados
-      .filter(t => t.estado === 'CONFIRMADO')
+      .filter(t => t.estado === 'CONFIRMADO' || t.estado === 'REPROGRAMADO')
       .reduce((sum, t) => sum + (t.servicios?.precio || 0), 0);
 
     doc.setFontSize(18);
@@ -98,7 +99,7 @@ const ModalReporteGlobal = ({ alCerrar }) => {
     });
 
     const finalY = doc.lastAutoTable.finalY;
-    doc.text(`TOTAL (CONFIRMADOS): $${totalIngresos.toLocaleString()}`, 14, finalY + 15);
+    doc.text(`TOTAL (CONFIRMADOS + REPROG): $${totalIngresos.toLocaleString()}`, 14, finalY + 15);
     doc.save(`Reporte_Harmony.pdf`);
   };
 
@@ -113,23 +114,11 @@ const ModalReporteGlobal = ({ alCerrar }) => {
               <div style={styles.rangoFechas}>
                 <div style={styles.campoFecha}>
                   <label style={styles.labelMini}>Desde</label>
-                  <input 
-                    type="date" 
-                    min={FECHA_MINIMA_2026}
-                    value={fechaDesde} 
-                    onChange={e => setFechaDesde(e.target.value)} 
-                    style={styles.inputDate} 
-                  />
+                  <input type="date" min={FECHA_MINIMA_2026} value={fechaDesde} onChange={e => setFechaDesde(e.target.value)} style={styles.inputDate} />
                 </div>
                 <div style={styles.campoFecha}>
                   <label style={styles.labelMini}>Hasta</label>
-                  <input 
-                    type="date" 
-                    min={FECHA_MINIMA_2026}
-                    value={fechaHasta} 
-                    onChange={e => setFechaHasta(e.target.value)} 
-                    style={styles.inputDate} 
-                  />
+                  <input type="date" min={FECHA_MINIMA_2026} value={fechaHasta} onChange={e => setFechaHasta(e.target.value)} style={styles.inputDate} />
                 </div>
               </div>
             </div>
@@ -140,15 +129,15 @@ const ModalReporteGlobal = ({ alCerrar }) => {
           </div>
 
           <div style={styles.tabsContainer}>
-            {["TODOS", "PENDIENTE", "CONFIRMADO", "CANCELADO"].map(est => (
+            {["TODOS", "PENDIENTE", "CONFIRMADO", "REPROGRAMADO", "CANCELADO"].map(est => (
               <button 
-                key={est}
-                onClick={() => setFiltroEstado(est)}
+                key={est} 
+                onClick={() => setFiltroEstado(est)} 
                 style={{
-                  ...styles.tabBtn,
-                  backgroundColor: filtroEstado === est ? '#a6835a' : 'transparent',
-                  color: filtroEstado === est ? '#fff' : '#a6835a',
-                  border: filtroEstado === est ? '1px solid #a6835a' : '1px solid #e2d5c5'
+                  ...styles.tabBtn, 
+                  backgroundColor: filtroEstado === est ? '#a6835a' : 'transparent', 
+                  color: filtroEstado === est ? '#fff' : '#a6835a', 
+                  border: filtroEstado === est ? '1px solid #a6835a' : '1px solid #e2d5c5' 
                 }}
               >
                 {est}
@@ -156,13 +145,7 @@ const ModalReporteGlobal = ({ alCerrar }) => {
             ))}
           </div>
 
-          <input 
-            type="text" 
-            placeholder="Buscar por cliente, empleado o servicio..." 
-            style={styles.inputBusqueda}
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-          />
+          <input type="text" placeholder="Buscar por cliente, empleado o servicio..." style={styles.inputBusqueda} value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
 
         <div style={styles.scrollSection}>
@@ -188,30 +171,29 @@ const ModalReporteGlobal = ({ alCerrar }) => {
                         <span style={styles.fecha}>{t.fecha}</span><br/>
                         <span style={styles.hora}>{t.hora.substring(0,5)}hs</span>
                       </td>
-                      <td style={styles.td}>
-                        <strong>{t.cliente?.nombre || 'S/N'} {t.cliente?.apellido || ''}</strong>
-                      </td>
-                      <td style={styles.td}>
-                        {t.especialista?.nombre || 'S/E'} {t.especialista?.apellido || ''}
-                      </td>
+                      <td style={styles.td}><strong>{t.cliente?.nombre || 'S/N'} {t.cliente?.apellido || ''}</strong></td>
+                      <td style={styles.td}>{t.especialista?.nombre || 'S/E'} {t.especialista?.apellido || ''}</td>
                       <td style={styles.td}>{t.servicios?.nombre || 'N/A'}</td>
                       <td style={styles.td}>
-                        <span style={{
-                          ...styles.statusBadge,
-                          backgroundColor: t.estado === 'CONFIRMADO' ? '#e8f8f0' : (t.estado === 'CANCELADO' ? '#fdeaea' : '#f0f0f0'),
-                          color: t.estado === 'CONFIRMADO' ? '#2ecc71' : (t.estado === 'CANCELADO' ? '#e74c3c' : '#7f8c8d')
+                        <span style={{ 
+                          ...styles.statusBadge, 
+                          backgroundColor: 
+                            t.estado === 'CONFIRMADO' ? '#e8f8f0' : 
+                            t.estado === 'CANCELADO' ? '#fdeaea' : 
+                            t.estado === 'REPROGRAMADO' ? '#eef2ff' : '#f0f0f0', 
+                          color: 
+                            t.estado === 'CONFIRMADO' ? '#2ecc71' : 
+                            t.estado === 'CANCELADO' ? '#e74c3c' : 
+                            t.estado === 'REPROGRAMADO' ? '#6366f1' : '#7f8c8d' 
                         }}>
                           {t.estado}
                         </span>
                       </td>
                       <td style={styles.td}>
-                        <select 
-                          value={t.estado} 
-                          onChange={(e) => actualizarEstado(t.id, e.target.value)}
-                          style={styles.select}
-                        >
+                        <select value={t.estado} onChange={(e) => actualizarEstado(t.id, e.target.value)} style={styles.select}>
                           <option value="PENDIENTE">Pendiente</option>
                           <option value="CONFIRMADO">Confirmado</option>
+                          <option value="REPROGRAMADO">Reprogramado</option>
                           <option value="CANCELADO">Cancelado</option>
                         </select>
                       </td>
@@ -224,23 +206,10 @@ const ModalReporteGlobal = ({ alCerrar }) => {
         </div>
 
         <div style={styles.paginacionContainer}>
-          <button 
-            disabled={pagina === 1} 
-            onClick={() => setPagina(pagina - 1)}
-            style={{...styles.btnPag, opacity: pagina === 1 ? 0.4 : 1}}
-          >
-            Anterior
-          </button>
+          <button disabled={pagina === 1} onClick={() => setPagina(pagina - 1)} style={{...styles.btnPag, opacity: pagina === 1 ? 0.4 : 1}}>Anterior</button>
           <span style={styles.infoPagina}>Página {pagina} de {totalPaginas || 1}</span>
-          <button 
-            disabled={pagina === totalPaginas || totalPaginas === 0} 
-            onClick={() => setPagina(pagina + 1)}
-            style={{...styles.btnPag, opacity: (pagina === totalPaginas || totalPaginas === 0) ? 0.4 : 1}}
-          >
-            Siguiente
-          </button>
+          <button disabled={pagina === totalPaginas || totalPaginas === 0} onClick={() => setPagina(pagina + 1)} style={{...styles.btnPag, opacity: (pagina === totalPaginas || totalPaginas === 0) ? 0.4 : 1}}>Siguiente</button>
         </div>
-
       </div>
     </div>
   );
@@ -248,23 +217,9 @@ const ModalReporteGlobal = ({ alCerrar }) => {
 
 const styles = {
   overlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 6000, padding: '20px' },
-  modal: { 
-    background: '#fff', 
-    padding: '30px', 
-    borderRadius: '30px', 
-    width: '1000px', 
-    height: '85vh', 
-    display: 'flex', 
-    flexDirection: 'column', 
-    boxShadow: '0 20px 50px rgba(0,0,0,0.2)' 
-  },
+  modal: { background: '#fff', padding: '30px', borderRadius: '30px', width: '1000px', height: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 50px rgba(0,0,0,0.2)' },
   fixedSection: { flexShrink: 0 },
-  scrollSection: { 
-    flex: 1, 
-    overflowY: 'auto', 
-    margin: '10px 0',
-    paddingRight: '5px'
-  },
+  scrollSection: { flex: 1, overflowY: 'auto', margin: '10px 0', paddingRight: '5px' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' },
   titulo: { color: '#a6835a', fontSize: '1.4rem', fontFamily: 'serif', margin: '0 0 10px 0' },
   rangoFechas: { display: 'flex', gap: '15px' },
@@ -280,9 +235,10 @@ const styles = {
   th: { padding: '15px', backgroundColor: '#fdfbf9', color: '#a6835a', borderBottom: '1px solid #f2e9e1', position: 'sticky', top: 0, zIndex: 10 },
   td: { padding: '15px', borderBottom: '1px solid #f2e9e1' },
   statusBadge: { padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 'bold' },
+  badgeReprog: { fontSize: '0.6rem', color: '#8c6d4f', fontWeight: 'bold', marginTop: '4px' },
   select: { padding: '5px', borderRadius: '6px', border: '1px solid #ddd' },
   loader: { textAlign: 'center', padding: '20px', color: '#a6835a' },
-  tabsContainer: { display: 'flex', gap: '10px', marginBottom: '20px' },
+  tabsContainer: { display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' },
   tabBtn: { padding: '8px 15px', borderRadius: '20px', fontSize: '0.75rem', cursor: 'pointer', transition: 'all 0.3s ease', border: '1px solid #e2d5c5' },
   paginacionContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', marginTop: '10px', flexShrink: 0 },
   btnPag: { padding: '8px 15px', borderRadius: '10px', border: '1px solid #a6835a', color: '#a6835a', background: '#fff', cursor: 'pointer' },

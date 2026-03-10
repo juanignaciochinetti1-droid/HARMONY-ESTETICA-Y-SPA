@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
-// Agregamos 'alSeleccionarHorario' a las props
 const ModalCalendario = ({ especialista, servicio, alCerrar, alSeleccionarHorario }) => {
   const [fechaActual, setFechaActual] = useState(new Date());
   const [diaSeleccionado, setDiaSeleccionado] = useState(null);
@@ -19,8 +18,14 @@ const ModalCalendario = ({ especialista, servicio, alCerrar, alSeleccionarHorari
 
   const buscarHorariosEnBaseDeDatos = async () => {
     setCargandoHoras(true);
-    const fechaFormateada = `${fechaActual.getFullYear()}-${String(fechaActual.getMonth() + 1).padStart(2, '0')}-${String(diaSeleccionado).padStart(2, '0')}`;
+    // Formateo estricto YYYY-MM-DD
+    const mes = String(fechaActual.getMonth() + 1).padStart(2, '0');
+    const dia = String(diaSeleccionado).padStart(2, '0');
+    const fechaFormateada = `${fechaActual.getFullYear()}-${mes}-${dia}`;
     
+    // LOG DE DEPURACIÓN: Revisa esto en la consola F12
+    console.log("Buscando disponibilidad para:", fechaFormateada, "ID Especialista:", especialista?.id);
+
     const { data: disponibilidad, error: errorDisp } = await supabase
       .from('disponibilidad_empleado')
       .select('hora_inicio')
@@ -35,23 +40,24 @@ const ModalCalendario = ({ especialista, servicio, alCerrar, alSeleccionarHorari
       .neq('estado', 'CANCELADO');
 
     if (!errorDisp && !errorTurnos) {
+      console.log("Disponibilidad encontrada:", disponibilidad);
       const horasOcupadas = turnosOcupados.map(t => t.hora.substring(0, 5));
       const resultadoFinal = disponibilidad.map(d => ({
         hora: d.hora_inicio.substring(0, 5),
         estaOcupado: horasOcupadas.includes(d.hora_inicio.substring(0, 5))
       }));
       setHorariosDisponibles(resultadoFinal);
+    } else {
+      console.error("Error en Supabase:", errorDisp || errorTurnos);
     }
     setCargandoHoras(false);
   };
 
-  // ESTA FUNCIÓN AHORA SOLO PASA LOS DATOS AL PADRE (EQUIPO.JSX)
   const manejarConfirmacion = () => {
     if (!horaSeleccionada || !diaSeleccionado) return;
-    
-    const fechaFormateada = `${fechaActual.getFullYear()}-${String(fechaActual.getMonth() + 1).padStart(2, '0')}-${String(diaSeleccionado).padStart(2, '0')}`;
-    
-    // Llamamos a la función que abre el BookingModal
+    const mes = String(fechaActual.getMonth() + 1).padStart(2, '0');
+    const dia = String(diaSeleccionado).padStart(2, '0');
+    const fechaFormateada = `${fechaActual.getFullYear()}-${mes}-${dia}`;
     alSeleccionarHorario(fechaFormateada, horaSeleccionada);
   };
 
@@ -60,6 +66,16 @@ const ModalCalendario = ({ especialista, servicio, alCerrar, alSeleccionarHorari
     hoy.setHours(0, 0, 0, 0);
     const fechaComparar = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), dia);
     return fechaComparar < hoy;
+  };
+
+  const esDomingo = (dia) => {
+    const fechaCheck = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), dia);
+    return fechaCheck.getDay() === 0; // 0 es Domingo en JS
+  };
+
+  const esMesPasado = () => {
+    const hoy = new Date();
+    return fechaActual.getFullYear() <= hoy.getFullYear() && fechaActual.getMonth() <= hoy.getMonth();
   };
 
   const diasMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 1, 0).getDate();
@@ -73,7 +89,12 @@ const ModalCalendario = ({ especialista, servicio, alCerrar, alSeleccionarHorari
         <p style={styles.subtitulo}>{servicio?.nombre ? servicio.nombre.toUpperCase() : 'SELECCIONÁ UN DÍA'}</p>
 
         <div style={styles.headerMes}>
-          <span style={styles.flecha} onClick={() => setFechaActual(new Date(fechaActual.setMonth(fechaActual.getMonth() - 1)))}>❮</span>
+          <span 
+            style={{...styles.flecha, opacity: esMesPasado() ? 0.3 : 1, cursor: esMesPasado() ? 'default' : 'pointer'}} 
+            onClick={() => !esMesPasado() && setFechaActual(new Date(fechaActual.setMonth(fechaActual.getMonth() - 1)))}
+          >
+            ❮
+          </span>
           <span style={styles.mesLabel}>{meses[fechaActual.getMonth()]} DE {fechaActual.getFullYear()}</span>
           <span style={styles.flecha} onClick={() => setFechaActual(new Date(fechaActual.setMonth(fechaActual.getMonth() + 1)))}>❯</span>
         </div>
@@ -86,18 +107,21 @@ const ModalCalendario = ({ especialista, servicio, alCerrar, alSeleccionarHorari
           {[...Array(diasMes)].map((_, i) => {
             const dia = i + 1;
             const pasado = esFechaPasada(dia);
+            const domingo = esDomingo(dia);
+            const deshabilitado = pasado || domingo;
             const esSeleccionado = diaSeleccionado === dia;
+            
             return (
               <div 
                 key={dia} 
                 style={{
                   ...styles.dia, 
-                  color: pasado ? '#e0e0e0' : (esSeleccionado ? '#fff' : '#8c6d4f'),
+                  color: deshabilitado ? '#e0e0e0' : (esSeleccionado ? '#fff' : '#8c6d4f'),
                   backgroundColor: esSeleccionado ? '#d4af37' : 'transparent',
-                  fontWeight: pasado ? '300' : '600',
-                  cursor: pasado ? 'default' : 'pointer'
+                  fontWeight: deshabilitado ? '300' : '600',
+                  cursor: deshabilitado ? 'default' : 'pointer'
                 }}
-                onClick={() => !pasado && setDiaSeleccionado(dia)}
+                onClick={() => !deshabilitado && setDiaSeleccionado(dia)}
               >
                 {dia}
               </div>
@@ -130,7 +154,7 @@ const ModalCalendario = ({ especialista, servicio, alCerrar, alSeleccionarHorari
                     </div>
                     ))
                 ) : (
-                    <p style={styles.sinHorario}>No hay horarios disponibles.</p>
+                    <p style={styles.sinHorario}>No hay horarios cargados para este especialista en el día seleccionado.</p>
                 )}
                 </div>
             )}
@@ -139,10 +163,7 @@ const ModalCalendario = ({ especialista, servicio, alCerrar, alSeleccionarHorari
 
         {horaSeleccionada && (
           <div style={styles.contenedorConfirmacion}>
-            <button 
-              style={styles.btnReservar}
-              onClick={manejarConfirmacion}
-            >
+            <button style={styles.btnReservar} onClick={manejarConfirmacion}>
               CONTINUAR - {horaSeleccionada}hs
             </button>
           </div>
@@ -154,6 +175,7 @@ const ModalCalendario = ({ especialista, servicio, alCerrar, alSeleccionarHorari
   );
 };
 
+// ... (Estilos se mantienen iguales)
 const styles = {
   overlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000 },
   modal: { background: '#fff', padding: '30px', borderRadius: '40px', width: '360px', textAlign: 'center', boxShadow: '0 15px 35px rgba(0,0,0,0.2)' },

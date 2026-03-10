@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { supabase } from '../../lib/supabaseClient'; // Verifica que suba dos niveles si está en components/Clientes/
-import CardTurnoCliente from './CardTurnoCliente'; // Si está en la misma carpeta Clientes
+import { supabase } from '../../lib/supabaseClient'; 
+import CardTurnoCliente from './CardTurnoCliente'; 
 
 export default function MisTurnos() {
   const [busqueda, setBusqueda] = useState({ dni: '', email: '' });
@@ -10,7 +10,6 @@ export default function MisTurnos() {
   const buscarTurnos = async (e) => {
     e.preventDefault();
     
-    // Validación mínima: Al menos uno de los dos debe estar lleno
     if (!busqueda.dni && !busqueda.email) {
       alert("Por favor, ingresa tu DNI o tu Email para buscar.");
       return;
@@ -18,11 +17,9 @@ export default function MisTurnos() {
 
     setCargando(true);
     try {
-      // 1. Buscamos al cliente (Usamos filtro OR)
       let query = supabase.from('users').select('id');
 
       if (busqueda.dni && busqueda.email) {
-        // Si pone ambos, buscamos coincidencia exacta de ambos por seguridad
         query = query.eq('dni', busqueda.dni).eq('email', busqueda.email.toLowerCase().trim());
       } else if (busqueda.dni) {
         query = query.eq('dni', busqueda.dni);
@@ -38,13 +35,16 @@ export default function MisTurnos() {
         return;
       }
 
-      // 2. Traemos los turnos del cliente encontrado
+      // CAMBIO CLAVE AQUÍ: Agregamos "id" en servicios y empleado
       const { data: turnosData, error: errorTurnos } = await supabase
         .from('turnos')
         .select(`
-          id, fecha, hora, estado,
-          servicios ( nombre, duracion_min ),
-          empleado:users!empleado_id ( nombre, apellido )
+          id, 
+          fecha, 
+          hora, 
+          estado,
+          servicios ( id, nombre, duracion_min ),
+          empleado:users!empleado_id ( id, nombre, apellido )
         `)
         .eq('cliente_id', cliente.id)
         .gte('fecha', new Date().toISOString().split('T')[0]) 
@@ -71,7 +71,6 @@ export default function MisTurnos() {
           placeholder="Tu DNI" 
           value={busqueda.dni}
           onChange={(e) => setBusqueda({...busqueda, dni: e.target.value.replace(/\D/g, '')})}
-          // Ya no es 'required' porque puede usar el email
         />
         
         <span style={styles.separador}>o</span>
@@ -106,6 +105,8 @@ export default function MisTurnos() {
 const styles = {
   container: { padding: '120px 20px 80px', maxWidth: '800px', margin: '0 auto', textAlign: 'center', minHeight: '80vh' },
   titulo: { color: '#8c6d4f', fontFamily: 'serif', fontSize: '2.5rem', marginBottom: '10px' },
+  instrucciones: { color: '#bfa38a', fontSize: '0.9rem', marginBottom: '20px' },
+  separador: { color: '#d1c4b9', alignSelf: 'center', fontWeight: 'bold', fontSize: '0.8rem' },
   formBusqueda: { display: 'flex', gap: '15px', justifyContent: 'center', marginBottom: '50px', flexWrap: 'wrap', marginTop: '30px' },
   input: { padding: '15px 25px', borderRadius: '30px', border: '1px solid #f2e9e1', outline: 'none', width: '250px', backgroundColor: '#fdfcfb' },
   btnBuscar: { backgroundColor: '#a6835a', color: 'white', border: 'none', padding: '15px 35px', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', transition: '0.3s' },
