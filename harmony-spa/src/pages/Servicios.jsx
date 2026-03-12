@@ -3,6 +3,21 @@ import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import ModalFiltroEspecialistas from '../components/Servicios/ModalFiltroEspecialistas';
 
+// --- COMPONENTE INTERNO: MODAL DE CONFIRMACIÓN ---
+const ModalConfirmacion = ({ mensaje, alConfirmar, alCancelar }) => (
+  <div style={styles.alertOverlay}>
+    <div style={styles.alertModal}>
+      <div style={styles.alertIcon}>!</div>
+      <h3 style={styles.alertTitle}>¿Estás seguro?</h3>
+      <p style={styles.alertText}>{mensaje}</p>
+      <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+        <button style={styles.btnCancelarAlerta} onClick={alCancelar}>CANCELAR</button>
+        <button style={styles.btnConfirmarAlerta} onClick={alConfirmar}>ELIMINAR</button>
+      </div>
+    </div>
+  </div>
+);
+
 export default function Servicios() {
   const [servicios, setServicios] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -11,6 +26,9 @@ export default function Servicios() {
   const [menuAbierto, setMenuAbierto] = useState(null); 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [formData, setFormData] = useState({ id: null, nombre: '', descripcion: '', precio: '', duracion_min: '' });
+
+  // ESTADO PARA EL CARTEL DE ELIMINACIÓN
+  const [confirmacion, setConfirmacion] = useState({ visible: false, id: null });
 
   const rolGuardado = localStorage.getItem('harmony_rol');
   const isAdmin = rolGuardado === 'ADMIN';
@@ -34,12 +52,18 @@ export default function Servicios() {
     navigate('/equipo', { state: { servicioElegido: servicioEnProceso, especialistaElegido: especialista, abrirCalendario: true } });
   };
 
-  const eliminarServicio = async (id) => {
+  const dispararEliminacion = (id) => {
     setMenuAbierto(null);
-    if (window.confirm("¿Estás seguro de que deseas eliminar este servicio?")) {
-      const { error } = await supabase.from('servicios').delete().eq('id', id);
-      if (!error) setServicios(servicios.filter(s => s.id !== id));
-      else alert("Error: " + error.message);
+    setConfirmacion({ visible: true, id: id });
+  };
+
+  const ejecutarEliminacion = async () => {
+    const { error } = await supabase.from('servicios').delete().eq('id', confirmacion.id);
+    if (!error) {
+      setServicios(servicios.filter(s => s.id !== confirmacion.id));
+      setConfirmacion({ visible: false, id: null });
+    } else {
+      alert("Error: " + error.message);
     }
   };
 
@@ -49,15 +73,11 @@ export default function Servicios() {
     setModalAbierto(true);
   };
 
-  // --- LÓGICA DE GUARDADO CON VALIDACIONES ---
   const guardarCambios = async (e) => {
     e.preventDefault();
-
-    // 1. Bloqueo de precios y duración negativos
     if (parseFloat(formData.precio) <= 0) return alert("El precio debe ser mayor a 0.");
     if (parseInt(formData.duracion_min) <= 0) return alert("La duración debe ser mayor a 0.");
 
-    // 2. Bloqueo de nombres duplicados
     const nombreNormalizado = formData.nombre.trim().toLowerCase();
     const yaExiste = servicios.some(s => s.id !== formData.id && s.nombre.toLowerCase().trim() === nombreNormalizado);
     if (yaExiste) return alert("Ya existe un servicio con ese nombre.");
@@ -101,7 +121,7 @@ export default function Servicios() {
                 {menuAbierto === s.id && (
                   <div style={styles.dropdown}>
                     <button style={styles.dropdownItem} onClick={() => prepararEdicion(s)}>✏️ Editar</button>
-                    <button style={{...styles.dropdownItem, color: '#e74c3c'}} onClick={() => eliminarServicio(s.id)}>🗑️ Eliminar</button>
+                    <button style={{...styles.dropdownItem, color: '#e74c3c'}} onClick={() => dispararEliminacion(s.id)}>🗑️ Eliminar</button>
                   </div>
                 )}
               </div>
@@ -127,12 +147,20 @@ export default function Servicios() {
               <input style={styles.input} type="number" placeholder="Precio" value={formData.precio} onChange={e => setFormData({...formData, precio: e.target.value})} required />
               <input style={styles.input} type="number" placeholder="Duración (min)" value={formData.duracion_min} onChange={e => setFormData({...formData, duracion_min: e.target.value})} required />
               <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
-                <button type="button" onClick={() => setModalAbierto(false)} style={styles.btnEliminar}>Cancelar</button>
+                <button type="button" onClick={() => setModalAbierto(false)} style={styles.btnEliminarForm}>Cancelar</button>
                 <button type="submit" style={styles.btnReservar}>Guardar</button>
               </div>
             </form>
           </div>
         </div>
+      )}
+
+      {confirmacion.visible && (
+        <ModalConfirmacion 
+          mensaje="Esta acción eliminará el servicio permanentemente del catálogo."
+          alConfirmar={ejecutarEliminacion}
+          alCancelar={() => setConfirmacion({ visible: false, id: null })}
+        />
       )}
 
       {mostrarFiltro && (
@@ -164,5 +192,14 @@ const styles = {
   modal: { backgroundColor: 'white', padding: '40px', borderRadius: '15px', width: '90%', maxWidth: '400px' },
   form: { display: 'flex', flexDirection: 'column', gap: '15px' },
   input: { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontFamily: 'sans-serif' },
-  btnEliminar: { backgroundColor: '#fdeaea', color: '#e74c3c', border: 'none', padding: '12px', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold', flex: 1 }
+  btnEliminarForm: { backgroundColor: '#fdeaea', color: '#e74c3c', border: 'none', padding: '12px', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold', flex: 1 },
+
+  // --- Estilos de la Alerta (Botón ELIMINAR ahora es #a6835a) ---
+  alertOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000, backdropFilter: 'blur(5px)' },
+  alertModal: { backgroundColor: '#fff', padding: '45px 40px', borderRadius: '40px', width: '420px', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', border: '1px solid #f2e9e1' },
+  alertIcon: { width: '65px', height: '65px', borderRadius: '50%', border: '2px solid #c5a37d', color: '#c5a37d', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '32px', margin: '0 auto 25px', fontWeight: 'bold' },
+  alertTitle: { color: '#8c6d4f', fontFamily: "'Playfair Display', serif", marginBottom: '15px', fontSize: '1.8rem', fontWeight: '400' },
+  alertText: { color: '#bfa38a', fontSize: '1.05rem', marginBottom: '35px', lineHeight: '1.6', letterSpacing: '0.3px' },
+  btnCancelarAlerta: { backgroundColor: '#f5f5f5', color: '#777', border: 'none', padding: '14px 30px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '1px' },
+  btnConfirmarAlerta: { backgroundColor: '#a6835a', color: 'white', border: 'none', padding: '14px 30px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '1px' }
 };

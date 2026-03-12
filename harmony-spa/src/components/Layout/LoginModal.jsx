@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from "../../lib/supabaseClient";
 import '../../App.css';
+
 // --- COMPONENTE INTERNO: CARTEL DE BIENVENIDA ---
 const WelcomeModal = ({ nombre, rol }) => (
   <div style={styles.welcomeOverlay}>
@@ -22,20 +23,43 @@ const WelcomeModal = ({ nombre, rol }) => (
   </div>
 );
 
+// --- COMPONENTE INTERNO: ICONOS SVG TRADICIONALES ---
+const IconoOjoAbierto = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a6835a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+    <circle cx="12" cy="12" r="3"></circle>
+  </svg>
+);
+
+const IconoOjoCerrado = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a6835a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+    <line x1="1" y1="1" x2="23" y2="23"></line>
+  </svg>
+);
+
 const LoginModal = ({ alCerrar, alLoguear }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [cargando, setCargando] = useState(false);
-  const [mostrarBienvenida, setMostrarBienvenida] = useState(false); // <--- NUEVO
-  const [datosUsuario, setDatosUsuario] = useState({ nombre: '', rol: '' }); // <--- NUEVO
+  const [errorLogin, setErrorLogin] = useState(false); // <--- ESTADO PARA ERROR
+  const [mostrarBienvenida, setMostrarBienvenida] = useState(false);
+  const [datosUsuario, setDatosUsuario] = useState({ nombre: '', rol: '' });
+  const [verPassword, setVerPassword] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setCargando(true);
+    setErrorLogin(false); // Limpiar error previo
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      
+      // Si hay error en las credenciales
+      if (error) {
+        setErrorLogin(true);
+        throw error;
+      }
 
       const { data: perfiles, error: perfilError } = await supabase
         .from('users')
@@ -46,7 +70,6 @@ const LoginModal = ({ alCerrar, alLoguear }) => {
 
       const perfil = perfiles[0];
 
-      // Guardar en LocalStorage
       localStorage.setItem('harmony_user_id', perfil.id);
       localStorage.setItem('harmony_rol', perfil.rol);
       localStorage.setItem('harmony_user', perfil.nombre);
@@ -54,11 +77,9 @@ const LoginModal = ({ alCerrar, alLoguear }) => {
 
       if (alLoguear) alLoguear(perfil); 
       
-      // --- PASO CLAVE: ACTIVAR BIENVENIDA ---
       setDatosUsuario({ nombre: perfil.nombre, rol: perfil.rol });
       setMostrarBienvenida(true);
 
-      // Esperar 3 segundos para que luzca el cartel y luego redirigir
       setTimeout(() => {
         if (perfil.rol === 'ADMIN') {
           window.location.href = "/vouchers";
@@ -68,20 +89,26 @@ const LoginModal = ({ alCerrar, alLoguear }) => {
       }, 3000);
 
     } catch (error) {
-      alert("Error al iniciar sesión: " + error.message);
+      console.error("Login fallido:", error.message);
       setCargando(false);
     }
   };
 
   return (
     <>
-      {/* Si NO se está mostrando la bienvenida, mostramos el formulario de login */}
       {!mostrarBienvenida ? (
         <div style={styles.overlay} onClick={alCerrar}>
           <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
             <h2 style={styles.titulo}>Identificarse</h2>
             <p style={styles.subtitulo}>Accede a tu perfil de Harmony</p>
             
+            {/* CARTEL DE ERROR PERSONALIZADO */}
+            {errorLogin && (
+              <div style={styles.errorBanner}>
+                Credenciales inválidas. Intenta de nuevo.
+              </div>
+            )}
+
             <form onSubmit={handleLogin}>
               <input 
                 type="email" 
@@ -91,14 +118,24 @@ const LoginModal = ({ alCerrar, alLoguear }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
-              <input 
-                type="password" 
-                placeholder="Contraseña" 
-                style={styles.input} 
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+
+              <div style={styles.passwordContainer}>
+                <input 
+                  type={verPassword ? "text" : "password"} 
+                  placeholder="Contraseña" 
+                  style={styles.inputPassword} 
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setVerPassword(!verPassword)} 
+                  style={styles.btnOjo}
+                >
+                  {verPassword ? <IconoOjoCerrado /> : <IconoOjoAbierto />}
+                </button>
+              </div>
               
               <button type="submit" style={styles.btnEntrar} disabled={cargando}>
                 {cargando ? 'ENTRANDO...' : 'ENTRAR'}
@@ -108,7 +145,6 @@ const LoginModal = ({ alCerrar, alLoguear }) => {
           </div>
         </div>
       ) : (
-        /* Si el login fue exitoso, mostramos el cartel de bienvenida */
         <WelcomeModal nombre={datosUsuario.nombre} rol={datosUsuario.rol} />
       )}
     </>
@@ -116,16 +152,29 @@ const LoginModal = ({ alCerrar, alLoguear }) => {
 };
 
 const styles = {
-  // ... Tus estilos de overlay y modal ...
   overlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(26, 26, 26, 0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, backdropFilter: 'blur(5px)' },
   modal: { background: 'white', padding: '40px', borderRadius: '25px', width: '320px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' },
   titulo: { color: '#8c6d4f', margin: '0 0 5px 0', fontWeight: '400', fontFamily: 'Playfair Display' },
   subtitulo: { fontSize: '0.7rem', color: '#bfa38a', marginBottom: '25px', letterSpacing: '1px', textTransform: 'uppercase' },
+  
+  // ESTILO DEL CARTEL DE ERROR
+  errorBanner: {
+    backgroundColor: '#fdeaea',
+    color: '#e74c3c', // Rojo suave pero claro
+    padding: '10px',
+    borderRadius: '10px',
+    fontSize: '0.8rem',
+    marginBottom: '15px',
+    border: '1px solid #f9d6d6'
+  },
+
   input: { width: '100%', padding: '14px', marginBottom: '15px', borderRadius: '12px', border: '1px solid #f2e9e1', boxSizing: 'border-box', backgroundColor: '#fdfcfb' },
+  passwordContainer: { position: 'relative', width: '100%', marginBottom: '15px' },
+  inputPassword: { width: '100%', padding: '14px', paddingRight: '45px', borderRadius: '12px', border: '1px solid #f2e9e1', boxSizing: 'border-box', backgroundColor: '#fdfcfb' },
+  btnOjo: { position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, opacity: 0.8 },
   btnEntrar: { width: '100%', padding: '15px', background: '#a6835a', color: 'white', border: 'none', borderRadius: '50px', cursor: 'pointer', fontWeight: 'bold', letterSpacing: '1px', transition: '0.3s' },
   btnCerrar: { marginTop: '10px', background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '0.8rem' },
 
-  // --- Estilos de la Bienvenida ---
   welcomeOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(252, 250, 247, 0.98)', backdropFilter: 'blur(10px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 },
   welcomeCard: { textAlign: 'center', padding: '50px', maxWidth: '450px', width: '90%' },
   welcomeLogo: { width: '80px', height: 'auto', marginBottom: '20px' },

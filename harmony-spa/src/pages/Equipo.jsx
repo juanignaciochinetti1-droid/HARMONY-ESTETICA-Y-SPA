@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 
-// Componentes (Mantengo tus imports iguales)
+// Componentes (Tus imports se mantienen iguales)
 import CardEspecialista from '../components/Especialistas/CardEspecialista';
 import ModalFormulario from '../components/Especialistas/ModalFormulario';
 import ModalGestionarAgenda from '../components/Especialistas/ModalGestionarAgenda';
@@ -12,7 +12,25 @@ import ModalReporteGlobal from '../components/Especialistas/ModalReporteGlobal';
 import BookingModal from '../components/Modals/BookingModal';
 import ModalHistorialEmpleado from '../components/Especialistas/ModalHistorialEmpleado';
 
-// --- COMPONENTE DE ALERTA INTERNO ---
+// --- COMPONENTE INTERNO: CARTEL DE CONFIRMACIÓN DE ELIMINACIÓN ---
+const ModalConfirmacionEliminar = ({ nombre, alConfirmar, alCancelar }) => (
+  <div style={styles.alertOverlay}>
+    <div style={styles.alertModal}>
+      <div style={styles.alertIcon}>!</div>
+      <h3 style={styles.alertTitle}>¿Estás seguro?</h3>
+      <p style={styles.alertText}>
+        Estás a punto de eliminar a <strong>{nombre}</strong>. 
+        Esta acción revocará su acceso al sistema y no se puede deshacer.
+      </p>
+      <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+        <button style={styles.btnCancelarAlerta} onClick={alCancelar}>CANCELAR</button>
+        <button style={styles.btnConfirmarAlerta} onClick={alConfirmar}>ELIMINAR</button>
+      </div>
+    </div>
+  </div>
+);
+
+// --- COMPONENTE DE ALERTA INTERNO (Informativo) ---
 const AlertaPersonalizada = ({ mensaje, alCerrar }) => (
   <div style={styles.alertOverlay}>
     <div style={styles.alertModal}>
@@ -63,7 +81,7 @@ export default function Equipo() {
   const location = useLocation();
   const LIMITE_EMPLEADOS = 20;
 
-  // 1. Estados de Modales
+  // Estados
   const [formAbierto, setFormAbierto] = useState(false);
   const [gestionAbierta, setGestionAbierta] = useState(false);
   const [calendarioAbierto, setCalendarioAbierto] = useState(false);
@@ -74,14 +92,15 @@ export default function Equipo() {
   const [passwordModalAbierto, setPasswordModalAbierto] = useState(false);
   const [alerta, setAlerta] = useState({ visible: false, mensaje: "" });
 
-  // 2. Estados de Datos
+  // NUEVO ESTADO PARA LA ELIMINACIÓN
+  const [confirmarEliminar, setConfirmarEliminar] = useState({ visible: false, empleado: null });
+
   const [listaEspecialistas, setListaEspecialistas] = useState([]);
   const [especialistaSeleccionado, setEspecialistaSeleccionado] = useState(null);
   const [especialistaAEditar, setEspecialistaAEditar] = useState(null);
   const [servicioSeleccionado, setServicioSeleccionado] = useState(null);
   const [datosReservaTemporal, setDatosReservaTemporal] = useState(null);
 
-  // 3. SEGURIDAD
   const rolGuardado = localStorage.getItem('harmony_rol');
   const idLogueado = localStorage.getItem('harmony_user_id'); 
   const isAdmin = rolGuardado === 'ADMIN';
@@ -95,18 +114,12 @@ export default function Equipo() {
     else setListaEspecialistas(data);
   };
 
-  // --- LÓGICA DE DETECCIÓN DE REPROGRAMACIÓN ---
   useEffect(() => {
     obtenerEspecialistas();
-    
-    // Si venimos de "Mis Turnos" con datos para reprogramar
     if (location.state?.abrirCalendario) {
       setServicioSeleccionado(location.state.servicioElegido);
       setEspecialistaSeleccionado(location.state.especialistaElegido);
       setCalendarioAbierto(true);
-      
-      // Limpiamos el estado para que no se reabra al recargar, pero conservamos el ID de reprogramación
-      // NOTA: No limpiamos el state por completo para que BookingModal lo pueda leer
     }
   }, [location]);
 
@@ -115,45 +128,40 @@ export default function Equipo() {
     return listaEspecialistas.filter(esp => esp.activo !== false);
   }, [isAdmin, esEmpleado, listaEspecialistas]);
 
-  // --- FUNCIONES DE NEGOCIO ---
   const abrirFlujoReserva = (esp) => { setEspecialistaSeleccionado(esp); setCalendarioAbierto(true); };
-  const verHistorialEmpleado = (esp) => { setEspecialistaSeleccionado(esp); setHistorialAbierto(true); };
-  const manejarServicioElegido = (ser) => { setServicioSeleccionado(ser); setMostrarServicios(false); setCalendarioAbierto(true); };
+  
+  // FUNCIONES DE ELIMINACIÓN ACTUALIZADAS
+  const dispararEliminacion = (esp) => {
+    setConfirmarEliminar({ visible: true, empleado: esp });
+  };
 
-  const borrarEspecialista = async (id) => {
-    if (window.confirm("¿Deseas eliminar este especialista?")) {
-      const { error } = await supabase.from('users').delete().eq('id', id);
-      if (!error) setListaEspecialistas(listaEspecialistas.filter(esp => esp.id !== id));
-      else mostrarError("Error al borrar: " + error.message);
+  const ejecutarEliminacion = async () => {
+    const id = confirmarEliminar.empleado.id;
+    const { error } = await supabase.from('users').delete().eq('id', id);
+    if (!error) {
+      setListaEspecialistas(listaEspecialistas.filter(esp => esp.id !== id));
+      setConfirmarEliminar({ visible: false, empleado: null });
+    } else {
+      mostrarError("Error al borrar: " + error.message);
     }
   };
 
   const guardarCambios = async (datos) => {
     try {
-      const nombreNormalizado = datos.nombre.trim();
-      const apellidoNormalizado = datos.apellido.trim();
-      const dniNormalizado = datos.dni?.trim();
-      const emailNormalizado = datos.email.trim().toLowerCase();
-      const telefonoNormalizado = datos.telefono?.trim();
-
-      if (dniNormalizado && !/^\d+$/.test(dniNormalizado)) return mostrarError("El DNI debe contener solo números.");
-      if (telefonoNormalizado && !/^\d+$/.test(telefonoNormalizado)) return mostrarError("El teléfono debe contener solo números.");
-
       const payload = {
-        nombre: nombreNormalizado, apellido: apellidoNormalizado, email: emailNormalizado,
-        telefono: telefonoNormalizado, especialidad: datos.especialidad, activo: datos.activo,
-        foto_url: datos.foto, dni: dniNormalizado 
+        nombre: datos.nombre.trim(), apellido: datos.apellido.trim(), email: datos.email.trim().toLowerCase(),
+        telefono: datos.telefono?.trim(), especialidad: datos.especialidad, activo: datos.activo,
+        foto_url: datos.foto, dni: datos.dni?.trim() 
       };
 
       if (especialistaAEditar) {
         const { data, error } = await supabase.from('users').update(payload).eq('id', especialistaAEditar.id).select();
         if (error) throw error;
         setListaEspecialistas(listaEspecialistas.map(esp => esp.id === especialistaAEditar.id ? data[0] : esp));
-        mostrarError("Perfil actualizado con éxito.");
+        mostrarError("Perfil actualizado.");
       } else {
-        if (listaEspecialistas.length >= LIMITE_EMPLEADOS) return mostrarError("Límite de staff alcanzado.");
         const { error: authError } = await supabase.auth.signUp({
-          email: emailNormalizado, password: datos.password,
+          email: payload.email, password: datos.password,
           options: { data: { ...payload, rol: 'EMPLEADO' } }
         });
         if (authError) throw authError;
@@ -178,17 +186,25 @@ export default function Equipo() {
             isAdmin={isAdmin || (esEmpleado && esp.id === idLogueado)}
             alVerHistorial={() => abrirFlujoReserva(esp)} 
             alGestionarHorarios={() => { setEspecialistaSeleccionado(esp); setGestionAbierta(true); }}
-            alVerHistorialDashboard={() => verHistorialEmpleado(esp)} 
-            alBorrar={borrarEspecialista}
+            alVerHistorialDashboard={() => { setEspecialistaSeleccionado(esp); setHistorialAbierto(true); }} 
+            alBorrar={() => dispararEliminacion(esp)}
             alEditar={() => { setEspecialistaAEditar(esp); setFormAbierto(true); }}
             alCambiarPass={() => setPasswordModalAbierto(true)} 
           />
         ))}
       </div>
 
-      {/* MODALES */}
-      {mostrarServicios && <ModalServicios alCerrar={() => setMostrarServicios(false)} alSeleccionar={manejarServicioElegido} />}
-      
+      {/* RENDER DEL CARTEL DE ELIMINACIÓN PERSONALIZADO */}
+      {confirmarEliminar.visible && (
+        <ModalConfirmacionEliminar 
+          nombre={confirmarEliminar.empleado.nombre}
+          alConfirmar={ejecutarEliminacion}
+          alCancelar={() => setConfirmarEliminar({ visible: false, empleado: null })}
+        />
+      )}
+
+      {/* OTROS MODALES */}
+      {mostrarServicios && <ModalServicios alCerrar={() => setMostrarServicios(false)} alSeleccionar={(ser) => { setServicioSeleccionado(ser); setMostrarServicios(false); setCalendarioAbierto(true); }} />}
       {calendarioAbierto && (
         <ModalCalendario 
           especialista={especialistaSeleccionado} servicio={servicioSeleccionado}
@@ -202,26 +218,13 @@ export default function Equipo() {
           }}
         />
       )}
-
-      {/* BookingModal ahora recibe toda la info, incluyendo si hay una reprogramación en curso */}
-      <BookingModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        selectedTurno={datosReservaTemporal} 
-        especialista={especialistaSeleccionado} 
-        servicio={servicioSeleccionado} 
-        onSuccess={() => { 
-          setIsModalOpen(false); 
-          setCalendarioAbierto(false); 
-          // Limpiamos el estado global después de un éxito para evitar bucles
-          window.history.replaceState({}, document.title);
-        }} 
-      />
-
+      <BookingModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} selectedTurno={datosReservaTemporal} especialista={especialistaSeleccionado} servicio={servicioSeleccionado} onSuccess={() => { setIsModalOpen(false); setCalendarioAbierto(false); window.history.replaceState({}, document.title); }} />
       {formAbierto && <ModalFormulario alCerrar={() => {setFormAbierto(false); setEspecialistaAEditar(null);}} alGuardar={guardarCambios} especialistaAEditar={especialistaAEditar} />}
       {gestionAbierta && <ModalGestionarAgenda especialista={especialistaSeleccionado} alCerrar={() => setGestionAbierta(false)} />}
       {passwordModalAbierto && <ModalPassword alCerrar={() => setPasswordModalAbierto(false)} mostrarError={mostrarError} />}
       {alerta.visible && <AlertaPersonalizada mensaje={alerta.mensaje} alCerrar={() => setAlerta({ visible: false, mensaje: "" })} />}
+      {reporteAbierto && <ModalReporteGlobal alCerrar={() => setReporteAbierto(false)} />}
+      {historialAbierto && <ModalHistorialEmpleado especialista={especialistaSeleccionado} alCerrar={() => setHistorialAbierto(false)} />}
 
       {isAdmin && (
         <div style={styles.fabContainer}>
@@ -229,28 +232,26 @@ export default function Equipo() {
           <button style={{...styles.btnAñadir, backgroundColor: listaEspecialistas.length >= LIMITE_EMPLEADOS ? '#ccc' : '#c5a37d', cursor: listaEspecialistas.length >= LIMITE_EMPLEADOS ? 'not-allowed' : 'pointer'}} onClick={() => { if (listaEspecialistas.length < LIMITE_EMPLEADOS) { setEspecialistaAEditar(null); setFormAbierto(true); } else { mostrarError("Límite alcanzado."); } }}>+</button>
         </div>
       )}
-
-      {reporteAbierto && <ModalReporteGlobal alCerrar={() => setReporteAbierto(false)} />}
-      {historialAbierto && <ModalHistorialEmpleado especialista={especialistaSeleccionado} alCerrar={() => setHistorialAbierto(false)} />}
     </main>
   );
 }
 
-// ... (Los estilos se mantienen iguales)
 const styles = {
   subtituloLabel: { textAlign: 'center', color: '#bfa38a', letterSpacing: '3px', fontSize: '0.7rem', marginBottom: '10px' },
   tituloPrincipal: { textAlign: 'center', color: '#8c6d4f', marginBottom: '10px', fontWeight: '300', fontSize: '2rem', fontFamily: "'Playfair Display', serif" },
   contadorCupos: { textAlign: 'center', color: '#a6835a', fontSize: '0.75rem', marginBottom: '30px', letterSpacing: '1px' },
   gridCards: { display: 'flex', gap: '30px', justifyContent: 'center', flexWrap: 'wrap' },
   fabContainer: { position: 'fixed', bottom: '30px', left: '30px', display: 'flex', flexDirection: 'column', gap: '15px', zIndex: 1000 },
-  btnReporte: { backgroundColor: '#fff', color: '#8c6d4f', border: '1px solid #f2e9e1', padding: '12px 20px', borderRadius: '25px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', letterSpacing: '1px' },
+  btnReporte: { backgroundColor: '#fff', color: '#8c6d4f', border: '1px solid #f2e9e1', padding: '12px 20px', borderRadius: '25px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', letterSpacing: '1px', fontFamily: "'Playfair Display', serif" },
   btnAñadir: { color: 'white', border: 'none', width: '55px', height: '55px', borderRadius: '50%', fontSize: '2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: '0 6px 20px rgba(197, 163, 125, 0.4)', transition: 'all 0.3s ease' },
   alertOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000, backdropFilter: 'blur(5px)' },
   alertModal: { backgroundColor: '#fff', padding: '45px 40px', borderRadius: '40px', width: '420px', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', border: '1px solid #f2e9e1' },
   alertIcon: { width: '65px', height: '65px', borderRadius: '50%', border: '2px solid #c5a37d', color: '#c5a37d', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '32px', margin: '0 auto 25px', fontWeight: 'bold' },
   alertTitle: { color: '#8c6d4f', fontFamily: "'Playfair Display', serif", marginBottom: '15px', fontSize: '1.8rem' },
   alertText: { color: '#bfa38a', fontSize: '1.05rem', marginBottom: '35px', lineHeight: '1.6' },
-  alertBtn: { backgroundColor: '#a6835a', color: 'white', border: 'none', padding: '14px 45px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '1px' },
+  alertBtn: { backgroundColor: '#a6835a', color: 'white', border: 'none', padding: '14px 45px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '1px', fontFamily: "'Playfair Display', serif" },
+  btnCancelarAlerta: { backgroundColor: '#f5f5f5', color: '#777', border: 'none', padding: '14px 30px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '1px', fontFamily: "'Playfair Display', serif" },
+  btnConfirmarAlerta: { backgroundColor: '#a6835a', color: 'white', border: 'none', padding: '14px 30px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '1px', fontFamily: "'Playfair Display', serif" },
   inputPass: { width: '100%', padding: '12px', marginBottom: '15px', borderRadius: '10px', border: '1px solid #f2e9e1', boxSizing: 'border-box' },
   btnCerrarPass: { background: 'none', border: 'none', color: '#bfa38a', marginTop: '15px', cursor: 'pointer', display: 'block', width: '100%', fontSize: '0.8rem' }
 };
