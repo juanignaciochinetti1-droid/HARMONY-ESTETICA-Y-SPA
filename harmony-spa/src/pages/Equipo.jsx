@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 
-// Componentes (Tus imports se mantienen iguales)
+// Componentes
 import CardEspecialista from '../components/Especialistas/CardEspecialista';
 import ModalFormulario from '../components/Especialistas/ModalFormulario';
 import ModalGestionarAgenda from '../components/Especialistas/ModalGestionarAgenda';
@@ -12,7 +12,24 @@ import ModalReporteGlobal from '../components/Especialistas/ModalReporteGlobal';
 import BookingModal from '../components/Modals/BookingModal';
 import ModalHistorialEmpleado from '../components/Especialistas/ModalHistorialEmpleado';
 
-// --- COMPONENTE INTERNO: CARTEL DE CONFIRMACIÓN DE ELIMINACIÓN ---
+// --- COMPONENTE INTERNO: CARTEL DE SIN CONEXIÓN (Lógica Unificada) ---
+const AlertaConexion = () => (
+  <div style={styles.connectionOverlay}>
+    <div style={styles.alertModal}>
+      <div style={{...styles.alertIcon, borderColor: '#c5a37d', color: '#c5a37d'}}>🌐</div>
+      <h3 style={styles.alertTitle}>Sin conexión</h3>
+      <p style={styles.alertText}>
+        Parece que has perdido la conexión a internet. 
+        Verifica tu red para seguir gestionando el equipo de Harmony.
+      </p>
+      <div style={styles.loaderBarContainer}>
+        <div style={styles.loaderBarProgress}></div>
+      </div>
+    </div>
+  </div>
+);
+
+// --- COMPONENTE INTERNO: CONFIRMACIÓN DE ELIMINACIÓN ---
 const ModalConfirmacionEliminar = ({ nombre, alConfirmar, alCancelar }) => (
   <div style={styles.alertOverlay}>
     <div style={styles.alertModal}>
@@ -82,6 +99,7 @@ export default function Equipo() {
   const LIMITE_EMPLEADOS = 20;
 
   // Estados
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [formAbierto, setFormAbierto] = useState(false);
   const [gestionAbierta, setGestionAbierta] = useState(false);
   const [calendarioAbierto, setCalendarioAbierto] = useState(false);
@@ -91,8 +109,6 @@ export default function Equipo() {
   const [historialAbierto, setHistorialAbierto] = useState(false);
   const [passwordModalAbierto, setPasswordModalAbierto] = useState(false);
   const [alerta, setAlerta] = useState({ visible: false, mensaje: "" });
-
-  // NUEVO ESTADO PARA LA ELIMINACIÓN
   const [confirmarEliminar, setConfirmarEliminar] = useState({ visible: false, empleado: null });
 
   const [listaEspecialistas, setListaEspecialistas] = useState([]);
@@ -108,32 +124,35 @@ export default function Equipo() {
 
   const mostrarError = (msg) => setAlerta({ visible: true, mensaje: msg });
 
-  const obtenerEspecialistas = async () => {
-    const { data, error } = await supabase.from('users').select('*').eq('rol', 'EMPLEADO');
-    if (error) console.error("Error al obtener especialistas:", error.message);
-    else setListaEspecialistas(data);
-  };
-
   useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
     obtenerEspecialistas();
     if (location.state?.abrirCalendario) {
       setServicioSeleccionado(location.state.servicioElegido);
       setEspecialistaSeleccionado(location.state.especialistaElegido);
       setCalendarioAbierto(true);
     }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
   }, [location]);
+
+  const obtenerEspecialistas = async () => {
+    const { data, error } = await supabase.from('users').select('*').eq('rol', 'EMPLEADO');
+    if (error) console.error("Error al obtener especialistas:", error.message);
+    else setListaEspecialistas(data);
+  };
 
   const especialistasAMostrar = useMemo(() => {
     if (isAdmin || esEmpleado) return listaEspecialistas;
     return listaEspecialistas.filter(esp => esp.activo !== false);
   }, [isAdmin, esEmpleado, listaEspecialistas]);
-
-  const abrirFlujoReserva = (esp) => { setEspecialistaSeleccionado(esp); setCalendarioAbierto(true); };
-  
-  // FUNCIONES DE ELIMINACIÓN ACTUALIZADAS
-  const dispararEliminacion = (esp) => {
-    setConfirmarEliminar({ visible: true, empleado: esp });
-  };
 
   const ejecutarEliminacion = async () => {
     const id = confirmarEliminar.empleado.id;
@@ -174,6 +193,8 @@ export default function Equipo() {
 
   return (
     <main style={{ backgroundColor: '#f5eee6', minHeight: '100vh', padding: '60px 20px' }}>
+      {!isOnline && <AlertaConexion />}
+
       <p style={styles.subtituloLabel}>PROFESIONALES A TU SERVICIO</p>
       <h2 style={styles.tituloPrincipal}>{esEmpleado ? 'Nuestro Equipo Profesional' : 'Nuestro Equipo'}</h2>
       
@@ -184,17 +205,17 @@ export default function Equipo() {
           <CardEspecialista 
             key={esp.id} especialista={esp} 
             isAdmin={isAdmin || (esEmpleado && esp.id === idLogueado)}
-            alVerHistorial={() => abrirFlujoReserva(esp)} 
+            alVerHistorial={() => { setEspecialistaSeleccionado(esp); setCalendarioAbierto(true); }} 
             alGestionarHorarios={() => { setEspecialistaSeleccionado(esp); setGestionAbierta(true); }}
             alVerHistorialDashboard={() => { setEspecialistaSeleccionado(esp); setHistorialAbierto(true); }} 
-            alBorrar={() => dispararEliminacion(esp)}
+            alBorrar={() => setConfirmarEliminar({ visible: true, empleado: esp })}
             alEditar={() => { setEspecialistaAEditar(esp); setFormAbierto(true); }}
             alCambiarPass={() => setPasswordModalAbierto(true)} 
           />
         ))}
       </div>
 
-      {/* RENDER DEL CARTEL DE ELIMINACIÓN PERSONALIZADO */}
+      {/* MODALES */}
       {confirmarEliminar.visible && (
         <ModalConfirmacionEliminar 
           nombre={confirmarEliminar.empleado.nombre}
@@ -203,8 +224,8 @@ export default function Equipo() {
         />
       )}
 
-      {/* OTROS MODALES */}
       {mostrarServicios && <ModalServicios alCerrar={() => setMostrarServicios(false)} alSeleccionar={(ser) => { setServicioSeleccionado(ser); setMostrarServicios(false); setCalendarioAbierto(true); }} />}
+      
       {calendarioAbierto && (
         <ModalCalendario 
           especialista={especialistaSeleccionado} servicio={servicioSeleccionado}
@@ -218,6 +239,7 @@ export default function Equipo() {
           }}
         />
       )}
+
       <BookingModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} selectedTurno={datosReservaTemporal} especialista={especialistaSeleccionado} servicio={servicioSeleccionado} onSuccess={() => { setIsModalOpen(false); setCalendarioAbierto(false); window.history.replaceState({}, document.title); }} />
       {formAbierto && <ModalFormulario alCerrar={() => {setFormAbierto(false); setEspecialistaAEditar(null);}} alGuardar={guardarCambios} especialistaAEditar={especialistaAEditar} />}
       {gestionAbierta && <ModalGestionarAgenda especialista={especialistaSeleccionado} alCerrar={() => setGestionAbierta(false)} />}
@@ -253,5 +275,10 @@ const styles = {
   btnCancelarAlerta: { backgroundColor: '#f5f5f5', color: '#777', border: 'none', padding: '14px 30px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '1px', fontFamily: "'Playfair Display', serif" },
   btnConfirmarAlerta: { backgroundColor: '#a6835a', color: 'white', border: 'none', padding: '14px 30px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '1px', fontFamily: "'Playfair Display', serif" },
   inputPass: { width: '100%', padding: '12px', marginBottom: '15px', borderRadius: '10px', border: '1px solid #f2e9e1', boxSizing: 'border-box' },
-  btnCerrarPass: { background: 'none', border: 'none', color: '#bfa38a', marginTop: '15px', cursor: 'pointer', display: 'block', width: '100%', fontSize: '0.8rem' }
+  btnCerrarPass: { background: 'none', border: 'none', color: '#bfa38a', marginTop: '15px', cursor: 'pointer', display: 'block', width: '100%', fontSize: '0.8rem' },
+  
+  // ESTILOS UNIFICADOS DE CONEXIÓN (Sin detalles rojos)
+  connectionOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(252, 250, 247, 0.95)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 20000, backdropFilter: 'blur(8px)' },
+  loaderBarContainer: { marginTop: '20px', height: '3px', width: '100%', backgroundColor: '#f2e9e1', borderRadius: '10px', overflow: 'hidden' },
+  loaderBarProgress: { height: '100%', backgroundColor: '#c5a37d', width: '100%', animation: 'loadingProgress 3s linear forwards' }
 };

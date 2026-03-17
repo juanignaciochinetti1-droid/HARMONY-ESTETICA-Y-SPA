@@ -1,16 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient'; 
 import CardTurnoCliente from './CardTurnoCliente'; 
+
+// --- COMPONENTE INTERNO: CARTEL DE SIN CONEXIÓN ---
+const AlertaConexion = () => (
+  <div style={styles.connectionOverlay}>
+    <div style={styles.alertModal}>
+      <div style={{...styles.alertIcon, borderColor: '#c5a37d', color: '#c5a37d'}}>🌐</div>
+      <h3 style={styles.alertTitle}>Sin conexión</h3>
+      <p style={styles.alertText}>
+        Parece que has perdido la conexión a internet. 
+        Verifica tu red para seguir consultando tus turnos en Harmony.
+      </p>
+      <div style={styles.loaderBarContainer}>
+        <div style={styles.loaderBarProgress}></div>
+      </div>
+    </div>
+  </div>
+);
 
 // --- COMPONENTE DE ALERTA INTERNO (Color #a6835a) ---
 const AlertaPersonalizada = ({ mensaje, alCerrar }) => (
   <div style={styles.alertOverlay}>
     <div style={styles.alertModal}>
-      {/* Icono de exclamación con el círculo dorado suave */}
       <div style={styles.alertIcon}>!</div>
       <h3 style={styles.alertTitle}>Atención</h3>
       <p style={styles.alertText}>{mensaje}</p>
-      {/* Botón con la tipografía serif unificada */}
       <button style={styles.alertBtn} onClick={alCerrar}>ENTENDIDO</button>
     </div>
   </div>
@@ -20,14 +35,28 @@ export default function MisTurnos() {
   const [busqueda, setBusqueda] = useState({ dni: '', email: '' });
   const [turnos, setTurnos] = useState([]);
   const [cargando, setCargando] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   // ESTADO PARA EL CARTEL PERSONALIZADO
   const [alerta, setAlerta] = useState({ visible: false, mensaje: "" });
 
+  // Lógica de detección de internet (useEffect agregado)
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const buscarTurnos = async (e) => {
     e.preventDefault();
     
-    // REEMPLAZO DE ALERT NATIVO
     if (!busqueda.dni && !busqueda.email) {
       setAlerta({ visible: true, mensaje: "Por favor, ingresa tu DNI o tu Email para buscar." });
       return;
@@ -47,7 +76,6 @@ export default function MisTurnos() {
 
       const { data: cliente, error: errorCliente } = await query.maybeSingle();
 
-      // REEMPLAZO DE ALERT NATIVO
       if (!cliente) {
         setAlerta({ visible: true, mensaje: "No encontramos ningún registro con esos datos." });
         setTurnos([]);
@@ -72,7 +100,6 @@ export default function MisTurnos() {
       setTurnos(turnosData);
 
     } catch (err) {
-      // REEMPLAZO DE ALERT NATIVO
       setAlerta({ visible: true, mensaje: "Error: " + err.message });
     } finally {
       setCargando(false);
@@ -81,6 +108,9 @@ export default function MisTurnos() {
 
   return (
     <main style={styles.container}>
+      {/* Lógica del cartel de conexión */}
+      {!isOnline && <AlertaConexion />}
+
       <h2 style={styles.titulo}>Mis Turnos en Harmony</h2>
       <p style={styles.instrucciones}>Busca tu turno usando uno de tus datos registrados:</p>
       
@@ -140,68 +170,16 @@ const styles = {
   listaTurnos: { display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' },
   mensaje: { color: '#bfa38a', fontStyle: 'italic', marginTop: '20px' },
 
-  // --- Estilos del Cartel Personalizado (Color #a6835a) ---
-  alertOverlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(0,0,0,0.5)', // Fondo oscuro traslúcido
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000, // Por encima de todo
-    backdropFilter: 'blur(5px)' // Efecto de desenfoque de fondo
-  },
-  alertModal: {
-    backgroundColor: '#fff',
-    padding: '45px 40px',
-    borderRadius: '40px',
-    width: '420px',
-    textAlign: 'center',
-    boxShadow: '0 20px 50px rgba(0,0,0,0.25)',
-    border: '1px solid #f2e9e1',
-    animation: 'fadeIn 0.3s ease' // Pequeña animación de entrada
-  },
-  alertIcon: {
-    width: '65px',
-    height: '65px',
-    borderRadius: '50%',
-    border: '2px solid #c5a37d', // Dorado suave
-    color: '#c5a37d',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    fontSize: '32px',
-    margin: '0 auto 25px',
-    fontWeight: 'bold'
-  },
-  alertTitle: {
-    color: '#8c6d4f',
-    fontFamily: "'Playfair Display', serif",
-    marginBottom: '15px',
-    fontSize: '1.8rem',
-    fontWeight: '400'
-  },
-  alertText: {
-    color: '#bfa38a',
-    fontSize: '1.05rem',
-    marginBottom: '35px',
-    lineHeight: '1.6',
-    letterSpacing: '0.3px'
-  },
-  alertBtn: {
-    backgroundColor: '#a6835a', // Dorado suave de marca
-    color: 'white',
-    border: 'none',
-    padding: '14px 45px',
-    borderRadius: '30px',
-    fontSize: '0.9rem',
-    fontWeight: 'bold',
-    cursor: 'pointer',
-    letterSpacing: '1px',
-    fontFamily: "'Playfair Display', serif", // Serif unificada
-    boxShadow: '0 4px 15px rgba(166, 131, 90, 0.3)'
-  }
+  // Estilos del Cartel de Conexión
+  connectionOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(252, 250, 247, 0.95)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 20000, backdropFilter: 'blur(8px)' },
+  loaderBarContainer: { marginTop: '20px', height: '3px', width: '100%', backgroundColor: '#f2e9e1', borderRadius: '10px', overflow: 'hidden' },
+  loaderBarProgress: { height: '100%', backgroundColor: '#c5a37d', width: '100%', animation: 'loadingProgress 3s linear forwards' },
+
+  // Estilos del Cartel Personalizado
+  alertOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, backdropFilter: 'blur(5px)' },
+  alertModal: { backgroundColor: '#fff', padding: '45px 40px', borderRadius: '40px', width: '420px', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', border: '1px solid #f2e9e1', animation: 'fadeIn 0.3s ease' },
+  alertIcon: { width: '65px', height: '65px', borderRadius: '50%', border: '2px solid #c5a37d', color: '#c5a37d', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '32px', margin: '0 auto 25px', fontWeight: 'bold' },
+  alertTitle: { color: '#8c6d4f', fontFamily: "'Playfair Display', serif", marginBottom: '15px', fontSize: '1.8rem', fontWeight: '400' },
+  alertText: { color: '#bfa38a', fontSize: '1.05rem', marginBottom: '35px', lineHeight: '1.6', letterSpacing: '0.3px' },
+  alertBtn: { backgroundColor: '#a6835a', color: 'white', border: 'none', padding: '14px 45px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '1px', fontFamily: "'Playfair Display', serif", boxShadow: '0 4px 15px rgba(166, 131, 90, 0.3)' }
 };

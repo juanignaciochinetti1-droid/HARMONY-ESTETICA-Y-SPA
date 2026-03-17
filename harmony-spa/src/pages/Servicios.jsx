@@ -3,6 +3,23 @@ import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import ModalFiltroEspecialistas from '../components/Servicios/ModalFiltroEspecialistas';
 
+// --- COMPONENTE INTERNO: CARTEL DE SIN CONEXIÓN ---
+const AlertaConexion = () => (
+  <div style={styles.connectionOverlay}>
+    <div style={styles.alertModal}>
+      <div style={{...styles.alertIcon, borderColor: '#c5a37d', color: '#c5a37d'}}>🌐</div>
+      <h3 style={styles.alertTitle}>Sin conexión</h3>
+      <p style={styles.alertText}>
+        Parece que has perdido la conexión a internet. 
+        Verifica tu red para seguir gestionando los servicios de Harmony.
+      </p>
+      <div style={styles.loaderBarContainer}>
+        <div style={styles.loaderBarProgress}></div>
+      </div>
+    </div>
+  </div>
+);
+
 // --- COMPONENTE INTERNO: MODAL DE CONFIRMACIÓN ---
 const ModalConfirmacion = ({ mensaje, alConfirmar, alCancelar }) => (
   <div style={styles.alertOverlay}>
@@ -19,6 +36,7 @@ const ModalConfirmacion = ({ mensaje, alConfirmar, alCancelar }) => (
 );
 
 export default function Servicios() {
+  const [isOnline, setIsOnline] = useState(navigator.onLine); // <--- ESTADO DE CONEXIÓN
   const [servicios, setServicios] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [servicioEnProceso, setServicioEnProceso] = useState(null);
@@ -26,15 +44,26 @@ export default function Servicios() {
   const [menuAbierto, setMenuAbierto] = useState(null); 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [formData, setFormData] = useState({ id: null, nombre: '', descripcion: '', precio: '', duracion_min: '' });
-
-  // ESTADO PARA EL CARTEL DE ELIMINACIÓN
   const [confirmacion, setConfirmacion] = useState({ visible: false, id: null });
 
   const rolGuardado = localStorage.getItem('harmony_rol');
   const isAdmin = rolGuardado === 'ADMIN';
   const navigate = useNavigate();
 
-  useEffect(() => { obtenerServicios(); }, []);
+  useEffect(() => {
+    // Detectores de internet
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    obtenerServicios();
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const obtenerServicios = async () => {
     const { data, error } = await supabase.from('servicios').select('*').order('nombre', { ascending: true });
@@ -102,6 +131,9 @@ export default function Servicios() {
 
   return (
     <main id="seccion-servicios" style={styles.container}> 
+      {/* CARTEL DE DESCONEXIÓN */}
+      {!isOnline && <AlertaConexion />}
+
       <header style={styles.header}>
         <h1 style={styles.tituloHeader}>Nuestros Servicios</h1>
         <p style={styles.subtituloHeader}>RESERVA CON EL 30% DE SEÑA</p>
@@ -180,26 +212,29 @@ const styles = {
   menuContenedor: { position: 'absolute', top: '15px', right: '15px' },
   optionsBadge: { background: 'none', border: '1px solid #f2e9e1', borderRadius: '50%', width: '35px', height: '35px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d1c4b9', fontSize: '1.2rem', cursor: 'pointer' },
   dropdown: { position: 'absolute', right: '0', top: '40px', backgroundColor: 'white', boxShadow: '0px 8px 16px rgba(0,0,0,0.1)', borderRadius: '8px', zIndex: 100, minWidth: '130px', border: '1px solid #eee' },
-  dropdownItem: { width: '100%', background: 'none', border: 'none', padding: '10px 15px', textAlign: 'left', cursor: 'pointer', fontSize: '14px' },
+  dropdownItem: { width: '100%', background: 'none', border: 'none', padding: '10px 15px', textAlign: 'left', cursor: 'pointer', fontSize: '14px', fontFamily: "'Playfair Display', serif" },
   servicioNombre: { color: '#8c6d4f', fontSize: '2rem', marginBottom: '15px' },
   servicioDescripcion: { color: '#bfa38a', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '25px', minHeight: '50px' },
   infoContenedor: { marginBottom: '30px' },
   duracionTexto: { color: '#bfa38a', fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '1.5px', marginBottom: '10px' },
   precioTexto: { color: '#bfa38a', fontSize: '1.6rem', fontWeight: '500' },
-  btnReservar: { backgroundColor: '#a6835a', color: '#fff', border: 'none', padding: '12px 35px', borderRadius: '25px', cursor: 'pointer' },
-  btnNuevo: { backgroundColor: '#a6835a', color: 'white', border: 'none', padding: '10px 25px', borderRadius: '25px', cursor: 'pointer', marginTop: '20px', letterSpacing: '1px' },
+  btnReservar: { backgroundColor: '#a6835a', color: '#fff', border: 'none', padding: '12px 35px', borderRadius: '25px', cursor: 'pointer', fontFamily: "'Playfair Display', serif" },
+  btnNuevo: { backgroundColor: '#a6835a', color: 'white', border: 'none', padding: '10px 25px', borderRadius: '25px', cursor: 'pointer', marginTop: '20px', letterSpacing: '1px', fontFamily: "'Playfair Display', serif" },
   overlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
   modal: { backgroundColor: 'white', padding: '40px', borderRadius: '15px', width: '90%', maxWidth: '400px' },
   form: { display: 'flex', flexDirection: 'column', gap: '15px' },
   input: { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontFamily: 'sans-serif' },
-  btnEliminarForm: { backgroundColor: '#fdeaea', color: '#e74c3c', border: 'none', padding: '12px', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold', flex: 1 },
+  btnEliminarForm: { backgroundColor: '#fdeaea', color: '#e74c3c', border: 'none', padding: '12px', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold', flex: 1, fontFamily: "'Playfair Display', serif" },
 
-  // --- Estilos de la Alerta (Botón ELIMINAR ahora es #a6835a) ---
+  // --- Estilos de Alerta y Conexión ---
+  connectionOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(252, 250, 247, 0.95)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 20000, backdropFilter: 'blur(8px)' },
+  loaderBarContainer: { marginTop: '20px', height: '3px', width: '100%', backgroundColor: '#f2e9e1', borderRadius: '10px', overflow: 'hidden' },
+  loaderBarProgress: { height: '100%', backgroundColor: '#c5a37d', width: '100%', animation: 'loadingProgress 3s linear forwards' },
   alertOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000, backdropFilter: 'blur(5px)' },
   alertModal: { backgroundColor: '#fff', padding: '45px 40px', borderRadius: '40px', width: '420px', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', border: '1px solid #f2e9e1' },
   alertIcon: { width: '65px', height: '65px', borderRadius: '50%', border: '2px solid #c5a37d', color: '#c5a37d', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '32px', margin: '0 auto 25px', fontWeight: 'bold' },
   alertTitle: { color: '#8c6d4f', fontFamily: "'Playfair Display', serif", marginBottom: '15px', fontSize: '1.8rem', fontWeight: '400' },
   alertText: { color: '#bfa38a', fontSize: '1.05rem', marginBottom: '35px', lineHeight: '1.6', letterSpacing: '0.3px' },
-  btnCancelarAlerta: { backgroundColor: '#f5f5f5', color: '#777', border: 'none', padding: '14px 30px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '1px' },
-  btnConfirmarAlerta: { backgroundColor: '#a6835a', color: 'white', border: 'none', padding: '14px 30px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '1px' }
+  btnCancelarAlerta: { backgroundColor: '#f5f5f5', color: '#777', border: 'none', padding: '14px 30px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '1px', fontFamily: "'Playfair Display', serif" },
+  btnConfirmarAlerta: { backgroundColor: '#a6835a', color: 'white', border: 'none', padding: '14px 30px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '1px', fontFamily: "'Playfair Display', serif" }
 };
