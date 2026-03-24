@@ -117,5 +117,12 @@ const styles = {
   gridCards: { display: 'flex', gap: '30px', justifyContent: 'center', flexWrap: 'wrap' },
   fabContainer: { position: 'fixed', bottom: '30px', left: '30px', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '15px' },
   btnReporte: { backgroundColor: '#fff', color: '#8c6d4f', border: '1px solid #c5a37d', padding: '10px 20px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '1px' },
-  btnAñadir: { backgroundColor: '#c5a37d', color: 'white', border: 'none', width: '55px', height: '55px', borderRadius: '50%', fontSize: '2rem', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }
+  btnAñadir: { backgroundColor: '#c5a37d', color: 'white', border: 'none', width: '55px', height: '55px', borderRadius: '50%', fontSize: '2rem', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' },
+  // --- Estilos de Alerta ---
+  alertOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000, backdropFilter: 'blur(5px)' },
+  alertModal: { backgroundColor: '#fff', padding: '35px', borderRadius: '30px', width: '320px', textAlign: 'center', border: '1px solid #f2e9e1', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' },
+  alertIcon: { width: '50px', height: '50px', borderRadius: '50%', border: '2px solid #a6835a', color: '#a6835a', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 15px', fontSize: '20px', fontWeight: 'bold' },
+  alertTitle: { color: '#8c6d4f', fontFamily: 'serif', fontSize: '1.4rem', marginBottom: '10px' },
+  alertText: { color: '#bfa38a', fontSize: '0.85rem', marginBottom: '20px', lineHeight: '1.4' },
+  alertBtn: { backgroundColor: '#a6835a', color: 'white', border: 'none', padding: '10px 30px', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold' }
 };

@@ -142,7 +142,8 @@ const styles = {
   valor: { fontSize: '1.1rem', color: '#8c6d4f', fontWeight: '600' },
   seccionAccion: { textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '180px' },
   btnReprogramar: { backgroundColor: '#a6835a', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '50px', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', transition: '0.3s' },
-  btnCancelar: { backgroundColor: 'transparent', color: '#e74c3c', border: '1px solid #e74c3c', padding: '10px 20px', borderRadius: '50px', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', transition: '0.3s' },
+  btnCancelar: { 
+  backgroundColor: 'transparent', color: '#8e443d', border: '1px solid #8e443d', padding: '10px 20px', borderRadius: '50px', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', transition: '0.3s' },
   aclaracion: { fontSize: '0.6rem', color: '#bfa38a', marginTop: '5px', fontStyle: 'italic' }
 };
 

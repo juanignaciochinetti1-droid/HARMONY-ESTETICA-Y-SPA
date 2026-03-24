@@ -11,6 +11,8 @@ import ModalCalendario from '../components/Especialistas/ModalCalendario';
 import ModalReporteGlobal from '../components/Especialistas/ModalReporteGlobal';
 import ModalHistorialEmpleado from '../components/Especialistas/ModalHistorialEmpleado';
 import BookingModal from '../components/Modals/BookingModal';
+// 1. IMPORTA EL MODAL DESDE LA CARPETA MODALS
+import ModalPassword from '../components/Modals/ModalPassword';
 
 const AlertaPersonalizada = ({ mensaje, alCerrar }) => (
   <div style={styles.alertOverlay}>
@@ -59,6 +61,7 @@ export default function Equipo() {
   const [datosReservaTemporal, setDatosReservaTemporal] = useState(null);
   const [alerta, setAlerta] = useState({ visible: false, mensaje: "" });
   const [confirmarEliminar, setConfirmarEliminar] = useState({ visible: false, empleado: null });
+  const [passwordModalAbierto, setPasswordModalAbierto] = useState(false);
 
   const obtenerEspecialistas = async () => {
     const { data, error } = await supabase.from('users').select('*').eq('rol', 'EMPLEADO');
@@ -158,7 +161,7 @@ export default function Equipo() {
             alVerHistorialDashboard={() => { setEspecialistaSeleccionado(esp); setHistorialAbierto(true); }}
             alEditar={() => { setEspecialistaAEditar(esp); setFormAbierto(true); }}
             alBorrar={() => setConfirmarEliminar({ visible: true, empleado: esp })}
-            alCambiarPass={() => setAlerta({visible: true, mensaje: "Función próximamente."})}
+            alCambiarPass={() => setPasswordModalAbierto(true)}
           />
         ))}
       </div>
@@ -202,6 +205,14 @@ export default function Equipo() {
           nombre={confirmarEliminar.empleado.nombre} 
           alConfirmar={ejecutarEliminacion} 
           alCancelar={() => setConfirmarEliminar({ visible: false, empleado: null })} 
+        />
+      )}
+
+      {/* 4. RENDERIZA EL MODAL DE PASSWORD AL FINAL */}
+      {passwordModalAbierto && (
+        <ModalPassword 
+          alCerrar={() => setPasswordModalAbierto(false)} 
+          setAlertaPadre={setAlerta} 
         />
       )}
 

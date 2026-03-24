@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // <--- AGREGADO useEffect
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Layout/Navbar';
 import Home from './pages/Home';
@@ -7,91 +7,124 @@ import Servicios from './pages/Servicios';
 import Vouchers from './pages/Vouchers';
 import LoginModal from './components/Layout/LoginModal';
 import MisTurnos from './components/Clientes/MisTurnos';
-
-// Herramientas de seguridad centralizadas
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
+
+// --- 1. COMPONENTE DEL CARTEL PERSONALIZADO ---
+const AlertaConexion = ({ visible }) => {
+  if (!visible) return null;
+  return (
+    <div style={styles.barraConexion}>
+      <div style={styles.contenidoBarra}>
+        <span style={{ fontSize: '1.2rem' }}>⚠️</span>
+        <span style={styles.textoBarra}>
+          <strong>CONEXIÓN INTERRUMPIDA:</strong> Las funciones de guardado se han pausado para proteger tus datos. 
+          <span style={styles.reconectando}> Reconectando...</span>
+        </span>
+      </div>
+      <style>{`
+        @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+        @keyframes blink { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+      `}</style>
+    </div>
+  );
+};
 
 function App() {
   const { profile, loading, signOut } = useAuth();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const [timedOut, setTimedOut] = useState(false);
+  
+  // --- 2. ESTADO DE CONEXIÓN ---
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  // Seguro de vida: si en 3 segundos no cargó, desbloqueamos la pantalla
   useEffect(() => {
-    if (loading) {
-      const timer = setTimeout(() => {
-        setTimedOut(true);
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [loading]);
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
 
-  // Si está cargando Y no hay perfil Y no pasaron los 3 segundos, mostramos cargando
-  if (loading && !profile && !timedOut) {
-    return (
-      <div style={{height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#fcfaf7'}}>
-        <h1 style={{color: '#a6835a', fontFamily: 'Playfair Display'}}>Cargando Harmony Spa...</h1>
-      </div>
-    );
-  }
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   return (
-    <div>
+    <div style={{ position: 'relative', minHeight: '100vh' }}>
+      
+      {/* 3. CARTEL DE CONEXIÓN (Siempre arriba de todo) */}
+      <AlertaConexion visible={isOffline} />
+
       <Navbar onLoginClick={() => setIsLoginOpen(true)} userRole={profile?.rol} onLogout={signOut} />
       
-      <Routes>
-        {/* --- RUTAS PÚBLICAS --- */}
-        <Route path="/" element={<Home />} />
-        <Route path="/equipo" element={<Equipo />} />
-        <Route path="/servicios" element={<Servicios />} />
-        
-        {/* Vouchers: Pública para que el cliente compre, 
-            pero la lógica interna esconderá los botones de Admin */}
-        <Route path="/vouchers" element={<Vouchers />} />
+      {/* 4. CONTENEDOR CON BLOQUEO (Si isOffline es true, se deshabilita todo) */}
+      <div style={{ 
+        opacity: isOffline ? 0.6 : 1, 
+        pointerEvents: isOffline ? 'none' : 'auto', // Esto impide clics
+        filter: isOffline ? 'grayscale(0.4) blur(1px)' : 'none', // Efecto visual de pausa
+        transition: 'all 0.5s ease'
+      }}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/equipo" element={<Equipo />} />
+          <Route path="/servicios" element={<Servicios />} />
+          <Route path="/vouchers" element={<Vouchers />} />
+          <Route path="/mis-turnos" element={<MisTurnos />} />
 
-        {/* Mis Turnos: El cliente entra aquí para buscar por DNI/Email */}
-        <Route path="/mis-turnos" element={<MisTurnos />} />
-
-        {/* --- RUTAS PROTEGIDAS (REQUIEREN ROL ESPECÍFICO) --- */}
-        
-        {/* Solo el personal del SPA (Admin o Empleado) puede ver la Agenda */}
-        <Route 
-          path="/agenda" 
-          element={
+          <Route path="/agenda" element={
             <ProtectedRoute>
-              <div style={{paddingTop: '100px', textAlign: 'center'}}>
-                <h2>Agenda de Turnos - Harmony Spa</h2>
-              </div>
+              <div style={styles.protectedSection}><h2>Agenda de Turnos</h2></div>
             </ProtectedRoute>
-          } 
-        />
-        
-        {/* Solo la Administradora (Clienta) puede entrar al Panel Global */}
-        <Route 
-          path="/admin" 
-          element={
+          } />
+          
+          <Route path="/admin" element={
             <ProtectedRoute roleRequired="ADMIN">
-              <div style={{paddingTop: '100px', textAlign: 'center'}}>
-                <h2>Panel de Administración Global</h2>
-              </div>
+              <div style={styles.protectedSection}><h2>Panel de Administración Global</h2></div>
             </ProtectedRoute>
-          } 
-        />
+          } />
 
-        {/* Redirección por defecto: Si escriben cualquier cosa, al Home */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
 
-      {/* Modal de Login: Ya no necesita 'actualizarUser' porque 
-          el AuthProvider detecta el login automáticamente */}
-      {isLoginOpen && (
-        <LoginModal 
-          alCerrar={() => setIsLoginOpen(false)} 
-        />
-      )}
+      {isLoginOpen && <LoginModal alCerrar={() => setIsLoginOpen(false)} />}
     </div>
   );
 }
+
+// --- 5. ESTILOS DEL CARTEL ---
+const styles = {
+  protectedSection: { paddingTop: '120px', textAlign: 'center', color: '#8c6d4f', fontFamily: 'serif' },
+  barraConexion: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100%',
+    backgroundColor: '#8c6d4f', // Color corporativo Harmony
+    color: '#fff',
+    padding: '12px 0',
+    zIndex: 20000, 
+    textAlign: 'center',
+    animation: 'slideDown 0.4s ease-out',
+    boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+  },
+  contenidoBarra: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '15px',
+    fontSize: '0.85rem'
+  },
+  reconectando: {
+    marginLeft: '10px',
+    fontSize: '0.7rem',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+    animation: 'blink 1.5s infinite',
+    color: '#f2e9e1',
+    fontWeight: 'bold'
+  }
+};
 
 export default App;
