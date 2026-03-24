@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext'; // <--- IMPORTANTE
 import ModalFiltroEspecialistas from '../components/Servicios/ModalFiltroEspecialistas';
-
 // --- COMPONENTE INTERNO: MODAL DE CONFIRMACIÓN ---
 const ModalConfirmacion = ({ mensaje, alConfirmar, alCancelar }) => (
   <div style={styles.alertOverlay}>
@@ -19,6 +19,9 @@ const ModalConfirmacion = ({ mensaje, alConfirmar, alCancelar }) => (
 );
 
 export default function Servicios() {
+  const { profile, loading } = useAuth();
+  const isAdmin = profile?.rol === 'ADMIN'; // <--- VALIDACIÓN SEGURA
+
   const [servicios, setServicios] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [servicioEnProceso, setServicioEnProceso] = useState(null);
@@ -26,18 +29,22 @@ export default function Servicios() {
   const [menuAbierto, setMenuAbierto] = useState(null); 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [formData, setFormData] = useState({ id: null, nombre: '', descripcion: '', precio: '', duracion_min: '' });
-
-  // ESTADO PARA EL CARTEL DE ELIMINACIÓN
   const [confirmacion, setConfirmacion] = useState({ visible: false, id: null });
 
-  const rolGuardado = localStorage.getItem('harmony_rol');
-  const isAdmin = rolGuardado === 'ADMIN';
   const navigate = useNavigate();
 
-  useEffect(() => { obtenerServicios(); }, []);
+  useEffect(() => { 
+    if (!loading) {
+      obtenerServicios(); 
+    }
+  }, [loading, isAdmin]);
 
   const obtenerServicios = async () => {
-    const { data, error } = await supabase.from('servicios').select('*').order('nombre', { ascending: true });
+    let query = supabase.from('servicios').select('*');
+    if (!isAdmin) {
+        query = query.eq('activo', true);
+    }
+    const { data, error } = await query.order('nombre', { ascending: true });
     if (!error) setServicios(data);
     setCargando(false);
   };
@@ -75,29 +82,38 @@ export default function Servicios() {
 
   const guardarCambios = async (e) => {
     e.preventDefault();
-    if (parseFloat(formData.precio) <= 0) return alert("El precio debe ser mayor a 0.");
-    if (parseInt(formData.duracion_min) <= 0) return alert("La duración debe ser mayor a 0.");
-
-    const nombreNormalizado = formData.nombre.trim().toLowerCase();
-    const yaExiste = servicios.some(s => s.id !== formData.id && s.nombre.toLowerCase().trim() === nombreNormalizado);
-    if (yaExiste) return alert("Ya existe un servicio con ese nombre.");
+    if (!profile || profile.rol !== 'ADMIN') {
+      return alert("Error de sesión: No reconocido como administrador.");
+    }
 
     const payload = {
       nombre: formData.nombre.trim(),
       descripcion: formData.descripcion,
       precio: parseFloat(formData.precio),
-      duracion_min: parseInt(formData.duracion_min)
+      duracion_min: parseInt(formData.duracion_min),
+      activo: true
     };
 
-    if (formData.id) {
-      await supabase.from('servicios').update(payload).eq('id', formData.id);
-    } else {
-      await supabase.from('servicios').insert([payload]);
+    try {
+      let resultado;
+      if (formData.id) {
+        resultado = await supabase.from('servicios').update(payload).eq('id', formData.id).select();
+      } else {
+        resultado = await supabase.from('servicios').insert([payload]).select();
+      }
+
+      if (resultado.error) throw new Error(resultado.error.message);
+
+      setServicios(formData.id 
+        ? servicios.map(s => s.id === formData.id ? resultado.data[0] : s)
+        : [...servicios, resultado.data[0]]
+      );
+
+      setModalAbierto(false);
+      setFormData({ id: null, nombre: '', descripcion: '', precio: '', duracion_min: '' });
+    } catch (error) {
+      alert("No se pudo guardar: " + error.message);
     }
-    
-    setModalAbierto(false);
-    setFormData({ id: null, nombre: '', descripcion: '', precio: '', duracion_min: '' });
-    obtenerServicios();
   };
 
   return (

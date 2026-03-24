@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 import '../../App.css';
+
 // --- COMPONENTE INTERNO: CARTEL DE BIENVENIDA ---
 const WelcomeModal = ({ nombre, rol }) => {
   return (
@@ -54,42 +55,49 @@ export default function Login() {
         // 2. Buscamos el perfil en la tabla pública
         const { data: perfiles, error: perfilError } = await supabase
           .from('users')
-          .select('id, rol, nombre')
-          .eq('id', data.user.id);
+          .select('id, rol, nombre, activo')
+          .eq('id', data.user.id)
+          .single(); // Traemos el objeto único
 
-        if (perfilError || !perfiles || perfiles.length === 0) {
-          throw new Error("Usuario autenticado pero sin perfil en la base de datos.");
+        if (perfilError || !perfiles) {
+          throw new Error("No se encontró un perfil asociado a esta cuenta.");
         }
 
-        const perfil = perfiles[0];
+        const perfil = perfiles;
 
-        // 3. Guardamos los datos en el LocalStorage
-        localStorage.setItem('harmony_user_id', perfil.id);
-        localStorage.setItem('harmony_rol', perfil.rol);
-        localStorage.setItem('harmony_user', perfil.nombre);
-        localStorage.setItem('harmony_admin', perfil.rol === 'ADMIN' ? 'true' : 'false');
+        // --- VALIDACIÓN DE ESTADO ACTIVO ---
+        if (perfil.activo === false) {
+          await supabase.auth.signOut();
+          throw new Error("Tu cuenta está desactivada. Contacta a administración.");
+        }
 
-        // 4. ACTIVAR BIENVENIDA Y ESPERAR PARA REDIRIGIR
+        // --- LIMPIEZA: YA NO USAMOS LOCALSTORAGE AQUÍ ---
+        // El AuthContext detectará la sesión automáticamente al detectar el evento de Supabase.
+
+        // 3. ACTIVAR BIENVENIDA
         setDatosUsuario({ nombre: perfil.nombre, rol: perfil.rol });
         setMostrarBienvenida(true);
 
+        // 4. REDIRECCIÓN SUAVE (Sin recargar la página)
         setTimeout(() => {
+          setMostrarBienvenida(false);
+          
+          // Navegamos usando el router interno para que el AuthContext no se reinicie
           if (perfil.rol === 'ADMIN') {
-            window.location.href = "/vouchers";
+            navigate("/vouchers");
           } else {
-            window.location.href = "/equipo";
+            navigate("/");
           }
-        }, 3000); // 3 segundos de lucidez para el modal
+        }, 3000); 
       }
     } catch (error) {
-      alert("Error al iniciar sesión: " + error.message);
+      alert(error.message);
       setCargando(false);
     }
   };
 
   return (
     <div style={styles.overlay}>
-      {/* CARD DE LOGIN ORIGINAL */}
       <div style={styles.card}>
         <h2 style={styles.titulo}>Harmony Spa</h2>
         <p style={styles.subtitulo}>Ingreso al Sistema</p>
@@ -121,7 +129,6 @@ export default function Login() {
         </form>
       </div>
 
-      {/* RENDERIZADO DEL CARTEL DE BIENVENIDA */}
       {mostrarBienvenida && (
         <WelcomeModal nombre={datosUsuario.nombre} rol={datosUsuario.rol} />
       )}
@@ -129,7 +136,6 @@ export default function Login() {
   );
 }
 
-// --- ESTILOS UNIFICADOS ---
 const styles = {
   overlay: { padding: '100px', display: 'flex', justifyContent: 'center', backgroundColor: '#fcfaf7', minHeight: '100vh' },
   card: { padding: '40px', background: '#fff', borderRadius: '25px', border: '1px solid #f2e9e1', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', maxWidth: '400px', width: '100%' },
@@ -137,14 +143,7 @@ const styles = {
   subtitulo: { color: '#bfa38a', fontSize: '0.8rem', letterSpacing: '2px', marginBottom: '30px', textTransform: 'uppercase' },
   input: { display: 'block', width: '100%', margin: '15px 0', padding: '12px', borderRadius: '10px', border: '1px solid #f2e9e1', backgroundColor: '#fdfcfb', boxSizing: 'border-box' },
   btnEntrar: { width: '100%', background: '#1a1a1a', color: 'white', border: 'none', padding: '15px', borderRadius: '50px', cursor: 'pointer', fontWeight: 'bold', letterSpacing: '1px', transition: '0.3s' },
-  
-  // Estilos del Welcome Modal
-  welcomeOverlay: {
-    position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-    backgroundColor: 'rgba(252, 250, 247, 0.98)', backdropFilter: 'blur(10px)',
-    display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000,
-    animation: 'fadeIn 0.5s ease'
-  },
+  welcomeOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(252, 250, 247, 0.98)', backdropFilter: 'blur(10px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000 },
   welcomeCard: { textAlign: 'center', padding: '50px', maxWidth: '450px', width: '90%' },
   welcomeIconContainer: { marginBottom: '20px' },
   welcomeLogo: { width: '80px', height: 'auto' },

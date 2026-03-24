@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from "../../lib/supabaseClient";
+import { useNavigate } from 'react-router-dom'; // Importamos el navegador
 import '../../App.css';
 
 // --- COMPONENTE INTERNO: CARTEL DE BIENVENIDA ---
@@ -23,7 +24,7 @@ const WelcomeModal = ({ nombre, rol }) => (
   </div>
 );
 
-// --- COMPONENTE INTERNO: ICONOS SVG TRADICIONALES ---
+// --- COMPONENTE INTERNO: ICONOS SVG ---
 const IconoOjoAbierto = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a6835a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -38,24 +39,25 @@ const IconoOjoCerrado = () => (
   </svg>
 );
 
-const LoginModal = ({ alCerrar, alLoguear }) => {
+const LoginModal = ({ alCerrar }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [cargando, setCargando] = useState(false);
-  const [errorLogin, setErrorLogin] = useState(false); // <--- ESTADO PARA ERROR
+  const [errorLogin, setErrorLogin] = useState(false);
   const [mostrarBienvenida, setMostrarBienvenida] = useState(false);
   const [datosUsuario, setDatosUsuario] = useState({ nombre: '', rol: '' });
   const [verPassword, setVerPassword] = useState(false);
+  
+  const navigate = useNavigate(); // Hook para navegar sin refrescar
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setCargando(true);
-    setErrorLogin(false); // Limpiar error previo
+    setErrorLogin(false);
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       
-      // Si hay error en las credenciales
       if (error) {
         setErrorLogin(true);
         throw error;
@@ -63,28 +65,34 @@ const LoginModal = ({ alCerrar, alLoguear }) => {
 
       const { data: perfiles, error: perfilError } = await supabase
         .from('users')
-        .select('id, rol, nombre')
-        .eq('id', data.user.id);
+        .select('id, rol, nombre, activo')
+        .eq('id', data.user.id)
+        .single();
 
-      if (perfilError || !perfiles || perfiles.length === 0) throw new Error("Perfil no encontrado");
+      if (perfilError || !perfiles) throw new Error("Perfil no encontrado");
 
-      const perfil = perfiles[0];
+      // Validación de usuario activo
+      if (perfiles.activo === false) {
+        await supabase.auth.signOut();
+        throw new Error("Tu cuenta está desactivada.");
+      }
 
-      localStorage.setItem('harmony_user_id', perfil.id);
-      localStorage.setItem('harmony_rol', perfil.rol);
-      localStorage.setItem('harmony_user', perfil.nombre);
-      localStorage.setItem('harmony_admin', perfil.rol === 'ADMIN' ? 'true' : 'false');
+      const perfil = perfiles;
 
-      if (alLoguear) alLoguear(perfil); 
-      
       setDatosUsuario({ nombre: perfil.nombre, rol: perfil.rol });
       setMostrarBienvenida(true);
 
+      // El AuthContext ya detectó el login, así que solo esperamos la animación
       setTimeout(() => {
+        setMostrarBienvenida(false);
+        alCerrar(); // Cerramos el modal
+        
+        // Navegación interna (No usa window.location.href para evitar refrescos)
         if (perfil.rol === 'ADMIN') {
-          window.location.href = "/vouchers";
+          navigate("/vouchers");
         } else {
-          window.location.href = "/equipo";
+          // Si es empleado o cliente, lo dejamos donde estaba
+          navigate("/"); 
         }
       }, 3000);
 
@@ -102,10 +110,9 @@ const LoginModal = ({ alCerrar, alLoguear }) => {
             <h2 style={styles.titulo}>Identificarse</h2>
             <p style={styles.subtitulo}>Accede a tu perfil de Harmony</p>
             
-            {/* CARTEL DE ERROR PERSONALIZADO */}
             {errorLogin && (
               <div style={styles.errorBanner}>
-                Credenciales inválidas. Intenta de nuevo.
+                Credenciales inválidas o cuenta desactivada.
               </div>
             )}
 
@@ -156,25 +163,13 @@ const styles = {
   modal: { background: 'white', padding: '40px', borderRadius: '25px', width: '320px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' },
   titulo: { color: '#8c6d4f', margin: '0 0 5px 0', fontWeight: '400', fontFamily: 'Playfair Display' },
   subtitulo: { fontSize: '0.7rem', color: '#bfa38a', marginBottom: '25px', letterSpacing: '1px', textTransform: 'uppercase' },
-  
-  // ESTILO DEL CARTEL DE ERROR
-  errorBanner: {
-    backgroundColor: '#fdeaea',
-    color: '#e74c3c', // Rojo suave pero claro
-    padding: '10px',
-    borderRadius: '10px',
-    fontSize: '0.8rem',
-    marginBottom: '15px',
-    border: '1px solid #f9d6d6'
-  },
-
+  errorBanner: { backgroundColor: '#fdeaea', color: '#e74c3c', padding: '10px', borderRadius: '10px', fontSize: '0.8rem', marginBottom: '15px', border: '1px solid #f9d6d6' },
   input: { width: '100%', padding: '14px', marginBottom: '15px', borderRadius: '12px', border: '1px solid #f2e9e1', boxSizing: 'border-box', backgroundColor: '#fdfcfb' },
   passwordContainer: { position: 'relative', width: '100%', marginBottom: '15px' },
   inputPassword: { width: '100%', padding: '14px', paddingRight: '45px', borderRadius: '12px', border: '1px solid #f2e9e1', boxSizing: 'border-box', backgroundColor: '#fdfcfb' },
   btnOjo: { position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, opacity: 0.8 },
-  btnEntrar: { width: '100%', padding: '15px', background: '#a6835a', color: 'white', border: 'none', borderRadius: '50px', cursor: 'pointer', fontWeight: 'bold', letterSpacing: '1px', transition: '0.3s' },
+  btnEntrar: { width: '100%', padding: '15px', background: '#a6835a', color: 'white', border: 'none', borderRadius: '50px', cursor: 'pointer', fontWeight: 'bold', letterSpacing: '1px' },
   btnCerrar: { marginTop: '10px', background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '0.8rem' },
-
   welcomeOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(252, 250, 247, 0.98)', backdropFilter: 'blur(10px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999 },
   welcomeCard: { textAlign: 'center', padding: '50px', maxWidth: '450px', width: '90%' },
   welcomeLogo: { width: '80px', height: 'auto', marginBottom: '20px' },

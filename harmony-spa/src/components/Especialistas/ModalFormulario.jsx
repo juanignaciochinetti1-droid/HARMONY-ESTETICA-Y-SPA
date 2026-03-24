@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js'; // Necesario para el cliente temporal
+import { supabase } from "../../lib/supabaseClient";
 
 const ModalFormulario = ({ alCerrar, alGuardar, especialistaAEditar }) => {
-  const [formData, setFormData] = useState({
-    nombre: '',
-    apellido: '',
-    dni: '',
-    especialidad: '',
-    email: '',
-    telefono: '',
-    password: '',
-    activo: true,
-    foto: ''
-  });
+  const estadoInicial = {
+    nombre: '', apellido: '', dni: '', especialidad: '',
+    email: '', telefono: '', password: '', activo: true, foto: ''
+  };
+
+  const [formData, setFormData] = useState(estadoInicial);
+  const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
     if (especialistaAEditar) {
@@ -26,17 +24,65 @@ const ModalFormulario = ({ alCerrar, alGuardar, especialistaAEditar }) => {
         activo: especialistaAEditar.activo ?? true,
         foto: especialistaAEditar.foto_url || ''
       });
-    } else {
-      setFormData({
-        nombre: '', apellido: '', dni: '', especialidad: '',
-        email: '', telefono: '', password: '', activo: true, foto: ''
-      });
     }
   }, [especialistaAEditar]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alGuardar(formData);
+    if (enviando) return;
+    setEnviando(true);
+
+    try {
+      if (especialistaAEditar) {
+        // --- EDITAR: Solo base de datos, no afecta sesión ---
+        await alGuardar(formData);
+        alCerrar();
+      } else {
+        // --- NUEVO: Registro sin pisar la sesión del Admin ---
+        
+        // 1. Extraemos la URL y Key del cliente que ya tienes importado
+        const supabaseUrl = supabase.supabaseUrl;
+        const supabaseKey = supabase.supabaseKey;
+
+        // 2. Creamos un cliente "desechable" que no guarda sesión
+        const authInvisible = createClient(supabaseUrl, supabaseKey, {
+          auth: {
+            persistSession: false, // <-- CLAVE: No guarda nada en LocalStorage
+            autoRefreshToken: false,
+            detectSessionInUrl: false
+          }
+        });
+
+        const { data, error } = await authInvisible.auth.signUp({
+          email: formData.email.trim().toLowerCase(),
+          password: formData.password,
+          options: {
+            data: {
+              nombre: formData.nombre,
+              apellido: formData.apellido,
+              rol: 'EMPLEADO',
+              especialidad: formData.especialidad,
+              dni: formData.dni,
+              telefono: formData.telefono,
+              foto_url: formData.foto,
+              activo: true
+            }
+          }
+        });
+
+        if (error) throw error;
+        
+        // 3. Avisamos al padre (Equipo.jsx) para que actualice la lista visual
+        await alGuardar(formData);
+        alCerrar();
+      }
+    } catch (error) {
+      // Si el error es el 500 de la base de datos que mencionaste antes, 
+      // pero el usuario aparece igual, el catch lo capturará aquí.
+      alert("Atención: " + error.message);
+    } finally {
+      setEnviando(false);
+    }
   };
 
   return (
@@ -46,6 +92,7 @@ const ModalFormulario = ({ alCerrar, alGuardar, especialistaAEditar }) => {
         <p style={styles.subtitulo}>REGISTRO DE STAFF</p>
         
         <form onSubmit={handleSubmit}>
+          {/* ... resto de tu formulario (campos Nombre, DNI, etc.) ... */}
           <div style={styles.row}>
             <div style={styles.campo}>
               <label style={styles.label}>NOMBRE</label>
@@ -59,46 +106,23 @@ const ModalFormulario = ({ alCerrar, alGuardar, especialistaAEditar }) => {
 
           <div style={styles.row}>
             <div style={styles.campo}>
-              <label style={styles.label}>DNI (ÚNICO Y FIJO)</label>
+              <label style={styles.label}>DNI</label>
               <input 
                 style={{
                   ...styles.input, 
                   backgroundColor: especialistaAEditar ? '#f5f5f5' : '#fdfcfb',
                   color: especialistaAEditar ? '#999' : '#555',
-                  cursor: especialistaAEditar ? 'not-allowed' : 'text'
                 }} 
                 type="text" 
                 value={formData.dni} 
-                // VALIDACIÓN: Solo números y bloqueado si es edición
-                onChange={(e) => {
-                  if (especialistaAEditar) return;
-                  const soloNumeros = e.target.value.replace(/\D/g, '');
-                  setFormData({...formData, dni: soloNumeros});
-                }} 
+                onChange={(e) => !especialistaAEditar && setFormData({...formData, dni: e.target.value.replace(/\D/g, '')})} 
                 readOnly={!!especialistaAEditar}
-                placeholder="Solo números"
-                required 
               />
             </div>
             <div style={styles.campo}>
               <label style={styles.label}>TELÉFONO</label>
-              <input 
-                style={styles.input} 
-                type="text" 
-                value={formData.telefono} 
-                // VALIDACIÓN: Solo números
-                onChange={(e) => {
-                  const soloNumeros = e.target.value.replace(/\D/g, '');
-                  setFormData({...formData, telefono: soloNumeros});
-                }} 
-                placeholder="Solo números"
-              />
+              <input style={styles.input} type="text" value={formData.telefono} onChange={(e) => setFormData({...formData, telefono: e.target.value.replace(/\D/g, '')})} />
             </div>
-          </div>
-
-          <div style={styles.campo}>
-            <label style={styles.label}>URL FOTO DE PERFIL</label>
-            <input style={styles.input} type="text" placeholder="https://link-a-la-foto.jpg" value={formData.foto} onChange={(e) => setFormData({...formData, foto: e.target.value})} />
           </div>
 
           <div style={styles.campo}>
@@ -120,14 +144,14 @@ const ModalFormulario = ({ alCerrar, alGuardar, especialistaAEditar }) => {
 
           <div style={styles.campo}>
             <label style={styles.label}>ESTADO</label>
-            <select style={styles.input} value={formData.activo} onChange={(e) => setFormData({...formData, activo: e.target.value === 'true'})}>
+            <select style={styles.input} value={String(formData.activo)} onChange={(e) => setFormData({...formData, activo: e.target.value === 'true'})}>
               <option value="true">✅ ACTIVO</option>
               <option value="false">❌ INACTIVO</option>
             </select>
           </div>
 
-          <button type="submit" style={styles.btnGuardar}>
-            {especialistaAEditar ? 'GUARDAR CAMBIOS' : 'CREAR ACCESO'}
+          <button type="submit" style={{...styles.btnGuardar, opacity: enviando ? 0.7 : 1}} disabled={enviando}>
+            {enviando ? 'PROCESANDO...' : (especialistaAEditar ? 'GUARDAR CAMBIOS' : 'CREAR ACCESO')}
           </button>
           <button type="button" onClick={alCerrar} style={styles.btnNoLink}>Cancelar</button>
         </form>
@@ -136,6 +160,7 @@ const ModalFormulario = ({ alCerrar, alGuardar, especialistaAEditar }) => {
   );
 };
 
+// ... (los estilos se mantienen igual)
 const styles = {
   overlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(26, 26, 26, 0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, backdropFilter: 'blur(4px)' },
   modal: { background: '#fff', padding: '40px', borderRadius: '40px', width: '450px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', overflowY: 'auto', maxHeight: '90vh' },

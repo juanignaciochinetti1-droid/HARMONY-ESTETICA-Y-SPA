@@ -1,23 +1,23 @@
-import React from 'react';
+import React, { useEffect } from 'react'; // <--- Una sola línea para todo
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../context/AuthContext'; 
 
-const Navbar = ({ onLoginClick, userRole }) => { 
+const Navbar = ({ onLoginClick }) => { 
   const navigate = useNavigate();
-  
-  // Obtenemos el nombre guardado (asegúrate de guardarlo en el Login)
-  const nombreUsuario = localStorage.getItem('harmony_user');
+  const { profile, signOut } = useAuth();
 
-  const cerrarSesion = async () => {
-    // 1. Cerramos sesión en Supabase
-    await supabase.auth.signOut();
-    
-    // 2. Limpiamos TODO el localStorage (Rol, ID, Nombre)
-    localStorage.clear();
-    
-    // 3. Redirigimos al inicio y forzamos recarga
-    window.location.href = "/"; 
-  };
+  useEffect(() => {
+    // Solo logueamos si el perfil existe, así evitamos el 'null' al cargar
+    if (profile) {
+      console.log("✅ SESIÓN ACTIVA:", profile.nombre, "| ROL:", profile.rol);
+    } else {
+      console.log("ℹ️ NAVEGANDO COMO INVITADO");
+    }
+  }, [profile]); // Se mantiene en tamaño 1 siempre.
+
+  // El rol y el nombre ahora vienen del perfil de la base de datos de Supabase
+  const nombreUsuario = profile?.nombre;
+  const userRole = profile?.rol;
 
   return (
     <nav style={styles.nav}>
@@ -38,11 +38,7 @@ const Navbar = ({ onLoginClick, userRole }) => {
         <li style={styles.menuItem}><Link to="/servicios" style={styles.linkStyle}>SERVICIOS</Link></li>
         <li style={styles.menuItem}><Link to="/equipo" style={styles.linkStyle}>EQUIPO</Link></li>
         <li style={styles.menuItem}><Link to="/vouchers" style={styles.linkStyle}>VOUCHERS</Link></li>
-        
-        {/* Ruta corregida a /mis-turnos */}
-        <li style={styles.menuItem}>
-          <Link to="/mis-turnos" style={styles.linkStyle}>MIS TURNOS</Link>
-        </li>
+        <li style={styles.menuItem}><Link to="/mis-turnos" style={styles.linkStyle}>MIS TURNOS</Link></li>
 
         <li style={styles.menuItem}>
           <a href="https://www.instagram.com/harmony.maguiveron" target="_blank" rel="noopener noreferrer" style={styles.linkStyle}>
@@ -52,13 +48,14 @@ const Navbar = ({ onLoginClick, userRole }) => {
         
         {/* --- SECCIÓN DE USUARIO --- */}
         <li style={styles.iconItem}>
-          {nombreUsuario ? (
+          {profile ? (
             <div style={styles.userFlex}>
               <div style={styles.userInfo}>
                 <span style={styles.userName}>Hola, {nombreUsuario}</span>
                 {userRole && <span style={styles.roleBadge}>{userRole}</span>}
               </div>
-              <button onClick={cerrarSesion} style={styles.btnSalir}>SALIR</button>
+              {/* Usamos el signOut del AuthContext */}
+              <button onClick={signOut} style={styles.btnSalir}>SALIR</button>
             </div>
           ) : (
             <div onClick={onLoginClick} style={styles.loginTrigger}>

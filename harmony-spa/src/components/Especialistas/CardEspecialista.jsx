@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../context/AuthContext'; // <--- Importamos el contexto
 
 const CardEspecialista = ({ 
   especialista, 
@@ -10,12 +11,14 @@ const CardEspecialista = ({
   alCambiarPass, 
   isAdmin 
 }) => {
-  // Extraemos las propiedades EXACTAS que vienen de tu tabla public.users
+  const { profile } = useAuth(); // <--- Obtenemos el perfil real
+  
   const { nombre, apellido, especialidad, activo, id, foto_url } = especialista;
   const [menuAbierto, setMenuAbierto] = useState(false);
 
-  const esAdminReal = localStorage.getItem('harmony_rol') === 'ADMIN';
-  const idLogueado = localStorage.getItem('harmony_user_id');
+  // --- NUEVA LÓGICA DE PERMISOS BASADA EN EL CONTEXTO ---
+  const esAdminReal = profile?.rol === 'ADMIN';
+  const idLogueado = profile?.id;
   const esMiPropioPerfil = id === idLogueado;
 
   return (
@@ -29,9 +32,13 @@ const CardEspecialista = ({
             <div style={styles.menuDesplegable}>
               <div style={styles.menuItem} onClick={() => { alGestionarHorarios(); setMenuAbierto(false); }}>📅 Gestionar Horarios</div>
               <div style={styles.menuItem} onClick={() => { alVerHistorialDashboard(); setMenuAbierto(false); }}>📋 Ver historial/agenda</div>
+              
+              {/* Solo el dueño del perfil puede cambiar su clave */}
               {esMiPropioPerfil && (
                 <div style={{ ...styles.menuItem, borderTop: '1px solid #f2e9e1', fontWeight: 'bold' }} onClick={() => { alCambiarPass(); setMenuAbierto(false); }}>🔑 Cambiar mi clave</div>
               )}
+              
+              {/* Solo el Admin puede editar o borrar a otros */}
               {esAdminReal && (
                 <>
                   <div style={{ ...styles.menuItem, borderTop: '1px solid #f2e9e1' }} onClick={() => { alEditar(); setMenuAbierto(false); }}>✏️ Editar Perfil</div>
@@ -52,7 +59,6 @@ const CardEspecialista = ({
         />
       </div>
 
-      {/* Identidad Dinámica: Aquí corregimos el texto fijo */}
       <h3 style={styles.name}>{nombre} {apellido}</h3>
       <p style={styles.specialty}>
         {especialidad ? especialidad.toUpperCase() : "PROFESIONAL"}
@@ -75,6 +81,7 @@ const CardEspecialista = ({
   );
 };
 
+// ... Los estilos se mantienen exactamente igual
 const styles = {
   card: { backgroundColor: '#fff', borderRadius: '15px', padding: '50px 30px 40px', width: '320px', textAlign: 'center', boxShadow: '0 15px 35px rgba(0,0,0,0.05)', position: 'relative', border: '1px solid #f0e6db' },
   optionsContainer: { position: 'absolute', top: '20px', left: '20px', zIndex: 10 },
