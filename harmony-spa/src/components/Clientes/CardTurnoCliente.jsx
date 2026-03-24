@@ -1,27 +1,17 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabaseClient';
 
-const CardTurnoCliente = ({ turno }) => {
+const CardTurnoCliente = ({ turno, alCancelar }) => {
   const navigate = useNavigate();
   
   const { id, fecha, hora, estado, servicios, empleado, ya_reprogramado } = turno;
 
-  // LÓGICA DE TIEMPO
   const hoy = new Date();
   const fechaTurno = new Date(fecha);
   const diffTime = fechaTurno - hoy;
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  /**
-   * REGLA DE NEGOCIO:
-   * Solo se puede reprogramar si:
-   * 1. El estado es CONFIRMADO (seña verificada) o REPROGRAMADO (ya movido pero sigue válido).
-   * 2. No se usó el cambio autónomo antes (ya_reprogramado === false).
-   * 3. Falta menos de 15 días para la cita.
-   */
   const puedeReprogramar = (estado === 'CONFIRMADO' || estado === 'REPROGRAMADO') && !ya_reprogramado && diffDays <= 15;
-  
   const puedeCancelar = estado !== 'CANCELADO';
 
   const manejarReprogramacion = () => {
@@ -40,33 +30,6 @@ const CardTurnoCliente = ({ turno }) => {
     });
   };
 
-  const generarLinkWhatsAppCancelacion = () => {
-    const numeroTelefono = "543537XXXXXX"; 
-    const texto = `*AVISO DE CANCELACIÓN* 🚫\nHola Harmony! 👋 Necesito avisar que he *cancelado* mi turno:\n💆 *Servicio:* ${servicios?.nombre}\n🗓️ *Fecha:* ${fecha}\n⏰ *Hora:* ${hora.substring(0, 5)} hs\nEspecialista: ${empleado?.nombre}\n\nPor favor, liberen mi lugar. ¡Gracias!`;
-    return `https://wa.me/${numeroTelefono}?text=${encodeURIComponent(texto)}`;
-  };
-
-  const cancelarTurno = async () => {
-    const confirmar = window.confirm("¿Estás seguro de que deseas cancelar este turno? Esta acción liberará el horario para otro cliente.");
-    if (!confirmar) return;
-
-    try {
-      const { error } = await supabase
-        .from('turnos')
-        .update({ estado: 'CANCELADO' })
-        .eq('id', id);
-
-      if (error) throw error;
-      
-      alert("Turno cancelado con éxito. Abriendo WhatsApp para notificar al Spa...");
-      window.open(generarLinkWhatsAppCancelacion(), '_blank');
-      window.location.reload(); 
-    } catch (err) {
-      alert("Error al cancelar: " + err.message);
-    }
-  };
-
-  // Colores dinámicos incluyendo el nuevo estado REPROGRAMADO
   const colorEstado = 
     estado === 'CONFIRMADO' ? '#27ae60' : 
     estado === 'CANCELADO' ? '#e74c3c' : 
@@ -109,7 +72,7 @@ const CardTurnoCliente = ({ turno }) => {
           </button>
           
           {puedeCancelar && (
-            <button style={styles.btnCancelar} onClick={cancelarTurno}>
+            <button style={styles.btnCancelar} onClick={alCancelar}>
               CANCELAR TURNO
             </button>
           )}
@@ -130,7 +93,7 @@ const CardTurnoCliente = ({ turno }) => {
 };
 
 const styles = {
-  card: { backgroundColor: '#fff', borderRadius: '20px', padding: '25px', marginBottom: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', border: '1px solid #f2e9e1', textAlign: 'left' },
+  card: { backgroundColor: '#fff', borderRadius: '20px', padding: '25px', marginBottom: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', border: '1px solid #f2e9e1', textAlign: 'left', width: '100%', maxWidth: '800px' },
   cuerpo: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' },
   seccionInfo: { flex: '1 1 200px' },
   badge: { fontSize: '0.6rem', padding: '4px 10px', borderRadius: '50px', border: '1px solid', fontWeight: 'bold', letterSpacing: '1px' },
