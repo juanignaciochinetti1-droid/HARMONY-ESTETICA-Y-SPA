@@ -9,8 +9,9 @@ import LoginModal from './components/Layout/LoginModal';
 import MisTurnos from './components/Clientes/MisTurnos';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
+import Admin from './pages/Admin'; 
 
-// --- 1. COMPONENTE DEL CARTEL PERSONALIZADO ---
+// --- 1. COMPONENTE DEL CARTEL DE CONEXIÓN ---
 const AlertaConexion = ({ visible }) => {
   if (!visible) return null;
   return (
@@ -53,34 +54,37 @@ function App() {
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       
-      {/* 3. CARTEL DE CONEXIÓN (Siempre arriba de todo) */}
+      {/* 3. CARTEL DE CONEXIÓN GLOBAL */}
       <AlertaConexion visible={isOffline} />
 
       <Navbar onLoginClick={() => setIsLoginOpen(true)} userRole={profile?.rol} onLogout={signOut} />
       
-      {/* 4. CONTENEDOR CON BLOQUEO (Si isOffline es true, se deshabilita todo) */}
+      {/* 4. CONTENEDOR CON BLOQUEO ANTI-ERRORES */}
       <div style={{ 
         opacity: isOffline ? 0.6 : 1, 
-        pointerEvents: isOffline ? 'none' : 'auto', // Esto impide clics
-        filter: isOffline ? 'grayscale(0.4) blur(1px)' : 'none', // Efecto visual de pausa
+        pointerEvents: isOffline ? 'none' : 'auto', 
+        filter: isOffline ? 'grayscale(0.4) blur(1px)' : 'none',
         transition: 'all 0.5s ease'
       }}>
         <Routes>
+          {/* RUTAS PÚBLICAS */}
           <Route path="/" element={<Home />} />
           <Route path="/equipo" element={<Equipo />} />
           <Route path="/servicios" element={<Servicios />} />
           <Route path="/vouchers" element={<Vouchers />} />
           <Route path="/mis-turnos" element={<MisTurnos />} />
 
+          {/* RUTAS PROTEGIDAS */}
           <Route path="/agenda" element={
             <ProtectedRoute>
               <div style={styles.protectedSection}><h2>Agenda de Turnos</h2></div>
             </ProtectedRoute>
           } />
           
+          {/* RUTA DE ADMINISTRACIÓN (CORREGIDA) */}
           <Route path="/admin" element={
             <ProtectedRoute roleRequired="ADMIN">
-              <div style={styles.protectedSection}><h2>Panel de Administración Global</h2></div>
+              <Admin />
             </ProtectedRoute>
           } />
 
@@ -93,7 +97,7 @@ function App() {
   );
 }
 
-// --- 5. ESTILOS DEL CARTEL ---
+// --- 5. ESTILOS ---
 const styles = {
   protectedSection: { paddingTop: '120px', textAlign: 'center', color: '#8c6d4f', fontFamily: 'serif' },
   barraConexion: {
@@ -101,7 +105,7 @@ const styles = {
     top: 0,
     left: 0,
     width: '100%',
-    backgroundColor: '#8c6d4f', // Color corporativo Harmony
+    backgroundColor: '#8c6d4f',
     color: '#fff',
     padding: '12px 0',
     zIndex: 20000, 

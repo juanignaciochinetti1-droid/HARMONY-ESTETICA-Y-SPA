@@ -45,6 +45,15 @@ const Navbar = ({ onLoginClick }) => {
             INSTAGRAM
           </a>
         </li>
+
+        {/* --- BOTÓN EXCLUSIVO PARA ADMIN --- */}
+        {userRole === 'ADMIN' && (
+          <li style={{...styles.menuItem, fontWeight: 'bold'}}>
+            <Link to="/admin" style={{...styles.linkStyle, color: '#8c6d4f'}}>
+              PANEL ADMIN 
+            </Link>
+          </li>
+        )}
         
         {/* --- SECCIÓN DE USUARIO --- */}
         <li style={styles.iconItem}>
