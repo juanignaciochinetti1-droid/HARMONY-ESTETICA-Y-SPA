@@ -19,7 +19,7 @@ const Admin = () => {
       .from('turnos')
       .select(`
         id, fecha, hora, estado,
-        users:cliente_id (nombre, telefono),
+        users:cliente_id (nombre, apellido, telefono),
         servicios:servicio_id (nombre)
       `)
       .eq('fecha', fechaMañana)
@@ -30,10 +30,14 @@ const Admin = () => {
   };
 
   const enviarWhatsApp = (turno) => {
-    const telefono = turno.users?.telefono?.replace(/\D/g, '');
+    const cliente = turno.users;
+    const telefono = cliente?.telefono?.replace(/\D/g, '');
     if (!telefono) return alert("El cliente no tiene teléfono.");
 
-    const mensaje = `✨ *RECORDATORIO HARMONY SPA* ✨%0A%0AHola *${turno.users.nombre}*! 👋 Te recordamos tu momento de relax para mañana:%0A%0A🌿 *Servicio:* ${turno.servicios.nombre}%0A⏰ *Hora:* ${turno.hora.substring(0, 5)} hs%0A%0A¡Te esperamos! 🧘‍♀️`;
+    // Concatenamos nombre y apellido para el mensaje de WhatsApp
+    const nombreCompleto = `${cliente.nombre} ${cliente.apellido || ''}`.trim();
+
+    const mensaje = `✨ *RECORDATORIO HARMONY SPA* ✨%0A%0AHola *${nombreCompleto}*! 👋 Te recordamos tu momento de relax para mañana:%0A%0A🌿 *Servicio:* ${turno.servicios.nombre}%0A⏰ *Hora:* ${turno.hora.substring(0, 5)} hs%0A%0A¡Te esperamos! 🧘‍♀️`;
     
     window.open(`https://wa.me/${telefono}?text=${mensaje}`, '_blank');
   };
@@ -64,17 +68,22 @@ const Admin = () => {
             </div>
           ) : (
             <div style={styles.lista}>
-              {turnosMañana.map(t => (
-                <div key={t.id} style={styles.fila}>
-                  <div style={styles.info}>
-                    <strong style={styles.clienteNombre}>{t.users.nombre}</strong>
-                    <span style={styles.turnoDetalle}>{t.servicios.nombre} — {t.hora.substring(0, 5)}hs</span>
+              {turnosMañana.map(t => {
+                // Preparamos el nombre completo para mostrar en la lista
+                const nombreCompleto = `${t.users.nombre} ${t.users.apellido || ''}`.trim();
+                
+                return (
+                  <div key={t.id} style={styles.fila}>
+                    <div style={styles.info}>
+                      <strong style={styles.clienteNombre}>{nombreCompleto}</strong>
+                      <span style={styles.turnoDetalle}>{t.servicios.nombre} — {t.hora.substring(0, 5)}hs</span>
+                    </div>
+                    <button onClick={() => enviarWhatsApp(t)} style={styles.btnWhatsApp}>
+                      AVISAR 📱
+                    </button>
                   </div>
-                  <button onClick={() => enviarWhatsApp(t)} style={styles.btnWhatsApp}>
-                    AVISAR 📱
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -87,87 +96,27 @@ const Admin = () => {
   );
 };
 
+// ... (Los estilos se mantienen iguales)
 const styles = {
-  // FONDO UNIFICADO CON TUS OTRAS PÁGINAS
-  mainContainer: { 
-    backgroundColor: '#f3ece4', 
-    minHeight: '100vh', 
-    padding: '100px 20px', 
-    fontFamily: "'Playfair Display', serif" 
-  },
+  mainContainer: { backgroundColor: '#f3ece4', minHeight: '100vh', padding: '100px 20px', fontFamily: "'Playfair Display', serif" },
   header: { textAlign: 'center', marginBottom: '50px' },
   tituloHeader: { color: '#8c6d4f', fontSize: '2.8rem', marginBottom: '5px' },
   subtituloHeader: { color: '#bfa38a', fontSize: '0.75rem', letterSpacing: '3px', fontWeight: '600' },
-  
   grid: { maxWidth: '800px', margin: '0 auto' },
-  cardPrincipal: { 
-    backgroundColor: '#ffffff', 
-    borderRadius: '15px', 
-    padding: '40px', 
-    boxShadow: '0 10px 30px rgba(0,0,0,0.03)', 
-    border: '1px solid #f2e9e1' 
-  },
-  cardHeader: { 
-    display: 'flex', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    marginBottom: '30px', 
-    borderBottom: '1px solid #fcfaf7', 
-    paddingBottom: '20px' 
-  },
+  cardPrincipal: { backgroundColor: '#ffffff', borderRadius: '15px', padding: '40px', boxShadow: '0 10px 30px rgba(0,0,0,0.03)', border: '1px solid #f2e9e1' },
+  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '1px solid #fcfaf7', paddingBottom: '20px' },
   cardTitulo: { color: '#8c6d4f', fontSize: '1.4rem', margin: 0 },
-  badge: { 
-    backgroundColor: '#a6835a', 
-    color: 'white', 
-    padding: '5px 15px', 
-    borderRadius: '20px', 
-    fontSize: '0.7rem', 
-    fontWeight: 'bold' 
-  },
+  badge: { backgroundColor: '#a6835a', color: 'white', padding: '5px 15px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 'bold' },
   lista: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  fila: { 
-    display: 'flex', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: '18px', 
-    borderRadius: '12px', 
-    backgroundColor: '#fdfcfb',
-    border: '1px solid #f9f6f3'
-  },
+  fila: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px', borderRadius: '12px', backgroundColor: '#fdfcfb', border: '1px solid #f9f6f3' },
   info: { display: 'flex', flexDirection: 'column', gap: '4px' },
   clienteNombre: { color: '#8c6d4f', fontSize: '1rem', fontWeight: '600' },
   turnoDetalle: { color: '#bfa38a', fontSize: '0.85rem' },
-  btnWhatsApp: { 
-    backgroundColor: '#25D366', 
-    color: 'white', 
-    border: 'none', 
-    padding: '10px 20px', 
-    borderRadius: '30px', 
-    fontWeight: 'bold', 
-    fontSize: '0.75rem', 
-    cursor: 'pointer',
-    boxShadow: '0 4px 10px rgba(37, 211, 102, 0.2)'
-  },
-  btnRefrescar: { 
-    display: 'block', 
-    margin: '40px auto', 
-    background: 'none', 
-    border: 'none', 
-    color: '#a6835a', 
-    cursor: 'pointer', 
-    fontSize: '0.8rem', 
-    fontWeight: 'bold',
-    letterSpacing: '1px'
-  },
+  btnWhatsApp: { backgroundColor: '#25D366', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '30px', fontWeight: 'bold', fontSize: '0.75rem', cursor: 'pointer', boxShadow: '0 4px 10px rgba(37, 211, 102, 0.2)' },
+  btnRefrescar: { display: 'block', margin: '40px auto', background: 'none', border: 'none', color: '#a6835a', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold', letterSpacing: '1px' },
   vacioContenedor: { textAlign: 'center', padding: '40px' },
   textoVacio: { color: '#bfa38a', fontStyle: 'italic' },
-  loadingScreen: { 
-    height: '100vh', 
-    display: 'flex', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    backgroundColor: '#f3ece4' 
-  }
+  loadingScreen: { height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3ece4' }
 };
 
 export default Admin;

@@ -53,10 +53,10 @@ const CardEspecialista = ({
       {/* Imagen */}
       <div style={styles.imageContainer}>
         <img 
-          src={foto_url || "/avatar-placeholder.png"} 
-          alt={nombre} 
-          style={{ ...styles.image, filter: activo ? 'none' : 'grayscale(100%)' }} 
-        />
+  src={especialista.foto_url || '/avatar-default.png'} 
+  alt={especialista.nombre} 
+  style={styles.foto} 
+/>
       </div>
 
       <h3 style={styles.name}>{nombre} {apellido}</h3>
@@ -88,8 +88,23 @@ const styles = {
   optionsDot: { color: '#bfa38a', fontSize: '1.4rem', cursor: 'pointer' },
   menuDesplegable: { position: 'absolute', top: '35px', left: '0', backgroundColor: '#fff', boxShadow: '0 5px 20px rgba(0,0,0,0.15)', borderRadius: '8px', padding: '8px 0', width: '180px', textAlign: 'left', zIndex: 100, border: '1px solid #f2e9e1' },
   menuItem: { padding: '12px 15px', fontSize: '0.85rem', color: '#8c6d4f', cursor: 'pointer' },
-  imageContainer: { width: '130px', height: '130px', margin: '0 auto 25px', borderRadius: '50%', overflow: 'hidden', border: '4px solid #f0e6db' },
-  image: { width: '100%', height: '100%', objectFit: 'cover' },
+  imageContainer: { 
+    width: '130px', 
+    height: '130px', 
+    margin: '0 auto 25px', 
+    borderRadius: '50%', 
+    overflow: 'hidden', 
+    border: '4px solid #f0e6db',
+    display: 'flex', // Añadí esto para centrar bien
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fdfcfb'
+  },
+  foto: { // <--- Cambiado de "image" a "foto"
+    width: '100%', 
+    height: '100%', 
+    objectFit: 'cover' 
+  },
   name: { color: '#1a1a1a', fontSize: '1.8rem', fontFamily: "'Playfair Display', serif", margin: '10px 0 5px 0' },
   specialty: { color: '#bfa38a', fontSize: '0.75rem', letterSpacing: '2px', marginBottom: '35px', fontWeight: '600' },
   btnDisponibilidad: { color: '#fff', border: 'none', padding: '16px', borderRadius: '50px', width: '100%', fontWeight: '600' },

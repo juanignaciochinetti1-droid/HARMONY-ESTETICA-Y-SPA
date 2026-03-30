@@ -78,44 +78,35 @@ export default function Equipo() {
   }, [location, loading]);
 
   const guardarEmpleado = async (datos) => {
-  try {
-    const payload = {
-      nombre: datos.nombre,
-      apellido: datos.apellido,
-      dni: datos.dni,
-      especialidad: datos.especialidad,
-      email: datos.email.trim().toLowerCase(),
-      telefono: datos.telefono,
-      activo: datos.activo,
-      foto_url: datos.foto,
-      rol: 'EMPLEADO'
-    };
+    try {
+      const payload = {
+        nombre: datos.nombre,
+        apellido: datos.apellido,
+        dni: datos.dni,
+        especialidad: datos.especialidad,
+        email: datos.email.trim().toLowerCase(),
+        telefono: datos.telefono,
+        activo: datos.activo,
+        foto_url: datos.foto_url, // <--- CORREGIDO: Usar foto_url que viene del modal
+        rol: 'EMPLEADO'
+      };
 
-    if (especialistaAEditar) {
-      // ACTUALIZAR
-      const { error } = await supabase.from('users').update(payload).eq('id', especialistaAEditar.id);
-      if (error) throw error;
-    } else {
-      // CREAR: Intentamos insertar, pero si el Trigger ya lo hizo (error 23505 o 409), no pasa nada
-      const { error } = await supabase.from('users').insert([payload]);
-      
-      // Si el error es "ya existe", es que el Trigger de Supabase fue más rápido. ÉXITO.
-      if (error && error.code !== '23505' && error.status !== 409) throw error;
-    }
+      if (especialistaAEditar) {
+        const { error } = await supabase.from('users').update(payload).eq('id', especialistaAEditar.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('users').insert([payload]);
+        if (error && error.code !== '23505' && error.status !== 409) throw error;
+      }
 
-    // --- ÉXITO TOTAL ---
-    await obtenerEspecialistas(); 
-    setAlerta({ 
-      visible: true, 
-      mensaje: especialistaAEditar 
-        ? "✨ Perfil actualizado correctamente." 
-        : "✨ Especialista registrado exitosamente en el staff." 
-    });
-
-  } catch (error) {
-    // Si llegamos acá por un error 500 de Supabase, refrescamos igual 
-    // porque el 99% de las veces el empleado se creó bien.
-    await obtenerEspecialistas();
+      await obtenerEspecialistas(); 
+      setAlerta({ 
+        visible: true, 
+        mensaje: especialistaAEditar ? "✨ Perfil actualizado." : "✨ Especialista registrado." 
+      });
+    } catch (error) {
+      console.error("Error guardando:", error);
+      await obtenerEspecialistas();
     
     setAlerta({ 
       visible: true, 

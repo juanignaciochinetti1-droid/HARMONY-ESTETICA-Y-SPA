@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext'; // <--- IMPORTANTE
+import { useAuth } from '../context/AuthContext';
 import ModalFiltroEspecialistas from '../components/Servicios/ModalFiltroEspecialistas';
-// --- COMPONENTE INTERNO: MODAL DE CONFIRMACIÓN ---
+
+// --- MODAL DE CONFIRMACIÓN ---
 const ModalConfirmacion = ({ mensaje, alConfirmar, alCancelar }) => (
   <div style={styles.alertOverlay}>
     <div style={styles.alertModal}>
@@ -20,7 +21,7 @@ const ModalConfirmacion = ({ mensaje, alConfirmar, alCancelar }) => (
 
 export default function Servicios() {
   const { profile, loading } = useAuth();
-  const isAdmin = profile?.rol === 'ADMIN'; // <--- VALIDACIÓN SEGURA
+  const isAdmin = profile?.rol === 'ADMIN';
 
   const [servicios, setServicios] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -28,25 +29,41 @@ export default function Servicios() {
   const [mostrarFiltro, setMostrarFiltro] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(null); 
   const [modalAbierto, setModalAbierto] = useState(false);
-  const [formData, setFormData] = useState({ id: null, nombre: '', descripcion: '', precio: '', duracion_min: '' });
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+
+  const [formData, setFormData] = useState({ id: null, nombre: '', descripcion: '', precio: '', duracion_min: '', foto_url: '' });
   const [confirmacion, setConfirmacion] = useState({ visible: false, id: null });
 
   const navigate = useNavigate();
 
   useEffect(() => { 
-    if (!loading) {
-      obtenerServicios(); 
-    }
+    if (!loading) obtenerServicios(); 
   }, [loading, isAdmin]);
 
   const obtenerServicios = async () => {
     let query = supabase.from('servicios').select('*');
-    if (!isAdmin) {
-        query = query.eq('activo', true);
-    }
+    if (!isAdmin) query = query.eq('activo', true);
     const { data, error } = await query.order('nombre', { ascending: true });
     if (!error) setServicios(data);
     setCargando(false);
+  };
+
+  // --- SUBIDA DE FOTO ---
+  const manejarSubidaFoto = async (e) => {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
+    setSubiendoFoto(true);
+    try {
+      const nombreArchivo = `${Date.now()}_${archivo.name}`;
+      const { data, error } = await supabase.storage.from('fotos-servicios').upload(nombreArchivo, archivo);
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from('fotos-servicios').getPublicUrl(nombreArchivo);
+      setFormData({ ...formData, foto_url: urlData.publicUrl });
+    } catch (error) {
+      alert("Error en foto: " + error.message);
+    } finally {
+      setSubiendoFoto(false);
+    }
   };
 
   const iniciarReserva = (servicio) => {
@@ -54,43 +71,27 @@ export default function Servicios() {
     setMostrarFiltro(true);
   };
 
+  // --- AQUÍ REINSTALAMOS LA FUNCIÓN QUE SE HABÍA BORRADO ---
   const finalizarSeleccion = (especialista) => {
     setMostrarFiltro(false);
-    navigate('/equipo', { state: { servicioElegido: servicioEnProceso, especialistaElegido: especialista, abrirCalendario: true } });
-  };
-
-  const dispararEliminacion = (id) => {
-    setMenuAbierto(null);
-    setConfirmacion({ visible: true, id: id });
-  };
-
-  const ejecutarEliminacion = async () => {
-    const { error } = await supabase.from('servicios').delete().eq('id', confirmacion.id);
-    if (!error) {
-      setServicios(servicios.filter(s => s.id !== confirmacion.id));
-      setConfirmacion({ visible: false, id: null });
-    } else {
-      alert("Error: " + error.message);
-    }
-  };
-
-  const prepararEdicion = (servicio) => {
-    setFormData({ id: servicio.id, nombre: servicio.nombre, descripcion: servicio.descripcion, precio: servicio.precio, duracion_min: servicio.duracion_min });
-    setMenuAbierto(null);
-    setModalAbierto(true);
+    // Enviamos al usuario a la página de Equipo con los datos necesarios para abrir el calendario
+    navigate('/equipo', { 
+      state: { 
+        servicioElegido: servicioEnProceso, 
+        especialistaElegido: especialista, 
+        abrirCalendario: true 
+      } 
+    });
   };
 
   const guardarCambios = async (e) => {
     e.preventDefault();
-    if (!profile || profile.rol !== 'ADMIN') {
-      return alert("Error de sesión: No reconocido como administrador.");
-    }
-
     const payload = {
       nombre: formData.nombre.trim(),
       descripcion: formData.descripcion,
       precio: parseFloat(formData.precio),
       duracion_min: parseInt(formData.duracion_min),
+      foto_url: formData.foto_url, // IMPORTANTE: Creá esta columna en Supabase
       activo: true
     };
 
@@ -101,19 +102,19 @@ export default function Servicios() {
       } else {
         resultado = await supabase.from('servicios').insert([payload]).select();
       }
-
-      if (resultado.error) throw new Error(resultado.error.message);
-
-      setServicios(formData.id 
-        ? servicios.map(s => s.id === formData.id ? resultado.data[0] : s)
-        : [...servicios, resultado.data[0]]
-      );
-
+      if (resultado.error) throw resultado.error;
+      obtenerServicios();
       setModalAbierto(false);
-      setFormData({ id: null, nombre: '', descripcion: '', precio: '', duracion_min: '' });
+      setFormData({ id: null, nombre: '', descripcion: '', precio: '', duracion_min: '', foto_url: '' });
     } catch (error) {
       alert("No se pudo guardar: " + error.message);
     }
+  };
+
+  const prepararEdicion = (s) => {
+    setFormData({ id: s.id, nombre: s.nombre, descripcion: s.descripcion, precio: s.precio, duracion_min: s.duracion_min, foto_url: s.foto_url || '' });
+    setMenuAbierto(null);
+    setModalAbierto(true);
   };
 
   return (
@@ -122,7 +123,7 @@ export default function Servicios() {
         <h1 style={styles.tituloHeader}>Nuestros Servicios</h1>
         <p style={styles.subtituloHeader}>RESERVA CON EL 30% DE SEÑA</p>
         {isAdmin && (
-          <button style={styles.btnNuevo} onClick={() => { setFormData({id: null, nombre:'', descripcion:'', precio:'', duracion_min:''}); setModalAbierto(true); }}>
+          <button style={styles.btnNuevo} onClick={() => { setFormData({id: null, nombre:'', descripcion:'', precio:'', duracion_min:'', foto_url: ''}); setModalAbierto(true); }}>
             + AGREGAR SERVICIO
           </button>
         )}
@@ -130,25 +131,30 @@ export default function Servicios() {
 
       <div style={styles.grid}>
         {servicios.map((s) => (
-          <div key={s.id} style={styles.card}>
+          <div key={s.id} style={{ ...styles.card, backgroundImage: s.foto_url ? `url(${s.foto_url})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+            {s.foto_url && <div style={styles.cardOverlay}></div>}
+
             {isAdmin && (
               <div style={styles.menuContenedor}>
                 <button style={styles.optionsBadge} onClick={() => setMenuAbierto(menuAbierto === s.id ? null : s.id)}>⋮</button>
                 {menuAbierto === s.id && (
                   <div style={styles.dropdown}>
                     <button style={styles.dropdownItem} onClick={() => prepararEdicion(s)}>✏️ Editar</button>
-                    <button style={{...styles.dropdownItem, color: '#e74c3c'}} onClick={() => dispararEliminacion(s.id)}>🗑️ Eliminar</button>
+                    <button style={{...styles.dropdownItem, color: '#e74c3c'}} onClick={() => {setConfirmacion({visible:true, id:s.id}); setMenuAbierto(null);}}>🗑️ Eliminar</button>
                   </div>
                 )}
               </div>
             )}
-            <h2 style={{...styles.servicioNombre, textTransform: 'capitalize'}}>{s.nombre.toLowerCase()}</h2>
-            <p style={styles.servicioDescripcion}>{s.descripcion}</p>
-            <div style={styles.infoContenedor}>
-              <p style={styles.duracionTexto}>DURACIÓN: {s.duracion_min} MIN</p>
-              <p style={styles.precioTexto}>${Number(s.precio).toLocaleString('es-AR')}</p>
+
+            <div style={{ position: 'relative', zIndex: 2 }}>
+                <h2 style={{...styles.servicioNombre, textTransform: 'capitalize'}}>{s.nombre.toLowerCase()}</h2>
+                <p style={styles.servicioDescripcion}>{s.descripcion}</p>
+                <div style={styles.infoContenedor}>
+                  <p style={styles.duracionTexto}>DURACIÓN: {s.duracion_min} MIN</p>
+                  <p style={styles.precioTexto}>${Number(s.precio).toLocaleString('es-AR')}</p>
+                </div>
+                <button style={styles.btnReservar} onClick={() => iniciarReserva(s)}>Reservar Turno</button>
             </div>
-            <button style={styles.btnReservar} onClick={() => iniciarReserva(s)}>Reservar Turno</button>
           </div>
         ))}
       </div>
@@ -156,15 +162,19 @@ export default function Servicios() {
       {modalAbierto && (
         <div style={styles.overlay}>
           <div style={styles.modal}>
-            <h2 style={{color: '#8c6d4f', marginBottom: '20px'}}>{formData.id ? 'Editar Servicio' : 'Nuevo Servicio'}</h2>
+            <h2 style={{color: '#8c6d4f', marginBottom: '20px'}}>{formData.id ? 'Editar' : 'Nuevo'} Servicio</h2>
             <form onSubmit={guardarCambios} style={styles.form}>
+              <div style={{ textAlign: 'left' }}>
+                <label style={{ fontSize: '0.7rem', color: '#8c6d4f', fontWeight: 'bold' }}>IMAGEN DE FONDO</label>
+                <input type="file" accept="image/*" onChange={manejarSubidaFoto} style={{ ...styles.input, marginTop: '5px' }} />
+              </div>
               <input style={styles.input} placeholder="Nombre" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} required />
               <textarea style={{...styles.input, minHeight: '80px'}} placeholder="Descripción" value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} />
               <input style={styles.input} type="number" placeholder="Precio" value={formData.precio} onChange={e => setFormData({...formData, precio: e.target.value})} required />
               <input style={styles.input} type="number" placeholder="Duración (min)" value={formData.duracion_min} onChange={e => setFormData({...formData, duracion_min: e.target.value})} required />
               <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
                 <button type="button" onClick={() => setModalAbierto(false)} style={styles.btnEliminarForm}>Cancelar</button>
-                <button type="submit" style={styles.btnReservar}>Guardar</button>
+                <button type="submit" disabled={subiendoFoto} style={styles.btnReservar}>Guardar</button>
               </div>
             </form>
           </div>
@@ -173,14 +183,22 @@ export default function Servicios() {
 
       {confirmacion.visible && (
         <ModalConfirmacion 
-          mensaje="Esta acción eliminará el servicio permanentemente del catálogo."
-          alConfirmar={ejecutarEliminacion}
+          mensaje="Se eliminará permanentemente."
+          alConfirmar={async () => {
+             await supabase.from('servicios').delete().eq('id', confirmacion.id);
+             obtenerServicios();
+             setConfirmacion({visible:false, id:null});
+          }}
           alCancelar={() => setConfirmacion({ visible: false, id: null })}
         />
       )}
 
       {mostrarFiltro && (
-        <ModalFiltroEspecialistas servicio={servicioEnProceso} alCerrar={() => setMostrarFiltro(false)} alSeleccionar={finalizarSeleccion} />
+        <ModalFiltroEspecialistas 
+          servicio={servicioEnProceso} 
+          alCerrar={() => setMostrarFiltro(false)} 
+          alSeleccionar={finalizarSeleccion} // <--- RECONECTADO
+        />
       )}
     </main>
   );
@@ -192,17 +210,41 @@ const styles = {
   tituloHeader: { color: '#8c6d4f', fontSize: '3.2rem', marginBottom: '10px' },
   subtituloHeader: { color: '#bfa38a', fontSize: '0.8rem', letterSpacing: '3px', fontWeight: '600' },
   grid: { display: 'flex', flexWrap: 'wrap', gap: '40px', justifyContent: 'center', maxWidth: '1200px', margin: '0 auto' },
-  card: { backgroundColor: '#ffffff', borderRadius: '12px', padding: '45px 30px', width: '320px', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.03)', position: 'relative', border: '1px solid #f2e9e1' },
-  menuContenedor: { position: 'absolute', top: '15px', right: '15px' },
-  optionsBadge: { background: 'none', border: '1px solid #f2e9e1', borderRadius: '50%', width: '35px', height: '35px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d1c4b9', fontSize: '1.2rem', cursor: 'pointer' },
+  
+  // Card modificada para posicionamiento relativo
+  card: { 
+    backgroundColor: '#ffffff', 
+    borderRadius: '12px', 
+    padding: '45px 30px', 
+    width: '320px', 
+    textAlign: 'center', 
+    boxShadow: '0 10px 30px rgba(0,0,0,0.03)', 
+    position: 'relative', 
+    border: '1px solid #f2e9e1',
+    overflow: 'hidden' 
+  },
+
+  // Capa para leer texto (Overlay)
+  cardOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.82)', // Blanco semi-transparente
+    zIndex: 1
+  },
+
+  menuContenedor: { position: 'absolute', top: '15px', right: '15px', zIndex: 10 },
+  optionsBadge: { background: 'white', border: '1px solid #f2e9e1', borderRadius: '50%', width: '35px', height: '35px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d1c4b9', fontSize: '1.2rem', cursor: 'pointer' },
   dropdown: { position: 'absolute', right: '0', top: '40px', backgroundColor: 'white', boxShadow: '0px 8px 16px rgba(0,0,0,0.1)', borderRadius: '8px', zIndex: 100, minWidth: '130px', border: '1px solid #eee' },
   dropdownItem: { width: '100%', background: 'none', border: 'none', padding: '10px 15px', textAlign: 'left', cursor: 'pointer', fontSize: '14px' },
   servicioNombre: { color: '#8c6d4f', fontSize: '2rem', marginBottom: '15px' },
-  servicioDescripcion: { color: '#bfa38a', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '25px', minHeight: '50px' },
+  servicioDescripcion: { color: '#5d4d3d', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '25px', minHeight: '50px', fontWeight: '500' },
   infoContenedor: { marginBottom: '30px' },
-  duracionTexto: { color: '#bfa38a', fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '1.5px', marginBottom: '10px' },
-  precioTexto: { color: '#bfa38a', fontSize: '1.6rem', fontWeight: '500' },
-  btnReservar: { backgroundColor: '#a6835a', color: '#fff', border: 'none', padding: '12px 35px', borderRadius: '25px', cursor: 'pointer' },
+  duracionTexto: { color: '#a6835a', fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '1.5px', marginBottom: '10px' },
+  precioTexto: { color: '#8c6d4f', fontSize: '1.6rem', fontWeight: '500' },
+  btnReservar: { backgroundColor: '#a6835a', color: '#fff', border: 'none', padding: '12px 35px', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold' },
   btnNuevo: { backgroundColor: '#a6835a', color: 'white', border: 'none', padding: '10px 25px', borderRadius: '25px', cursor: 'pointer', marginTop: '20px', letterSpacing: '1px' },
   overlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
   modal: { backgroundColor: 'white', padding: '40px', borderRadius: '15px', width: '90%', maxWidth: '400px' },
@@ -210,7 +252,7 @@ const styles = {
   input: { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontFamily: 'sans-serif' },
   btnEliminarForm: { backgroundColor: '#fdeaea', color: '#e74c3c', border: 'none', padding: '12px', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold', flex: 1 },
 
-  // --- Estilos de la Alerta (Botón ELIMINAR ahora es #a6835a) ---
+  // --- Estilos de la Alerta ---
   alertOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000, backdropFilter: 'blur(5px)' },
   alertModal: { backgroundColor: '#fff', padding: '45px 40px', borderRadius: '40px', width: '420px', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', border: '1px solid #f2e9e1' },
   alertIcon: { width: '65px', height: '65px', borderRadius: '50%', border: '2px solid #c5a37d', color: '#c5a37d', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '32px', margin: '0 auto 25px', fontWeight: 'bold' },

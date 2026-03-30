@@ -50,7 +50,7 @@ const Navbar = ({ onLoginClick }) => {
         {userRole === 'ADMIN' && (
           <li style={{...styles.menuItem, fontWeight: 'bold'}}>
             <Link to="/admin" style={{...styles.linkStyle, color: '#8c6d4f'}}>
-              PANEL ADMIN 
+              PANEL DE AVISOS 
             </Link>
           </li>
         )}

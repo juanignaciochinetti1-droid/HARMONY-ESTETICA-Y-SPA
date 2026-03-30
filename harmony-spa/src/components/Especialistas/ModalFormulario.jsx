@@ -1,85 +1,102 @@
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js'; // Necesario para el cliente temporal
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from "../../lib/supabaseClient";
 
 const ModalFormulario = ({ alCerrar, alGuardar, especialistaAEditar }) => {
   const estadoInicial = {
-    nombre: '', apellido: '', dni: '', especialidad: '',
-    email: '', telefono: '', password: '', activo: true, foto: ''
+    nombre: '', 
+    apellido: '', 
+    dni: '', 
+    especialidad: '',
+    email: '', 
+    telefono: '', 
+    password: '', 
+    activo: true, 
+    foto_url: '' 
   };
 
   const [formData, setFormData] = useState(estadoInicial);
   const [enviando, setEnviando] = useState(false);
+  const [archivoFoto, setArchivoFoto] = useState(null);
 
   useEffect(() => {
     if (especialistaAEditar) {
       setFormData({
         nombre: especialistaAEditar.nombre || '',
         apellido: especialistaAEditar.apellido || '',
-        dni: especialistaAEditar.dni || '',
+        dni: especialistaAEditar.dni || '', 
         especialidad: especialistaAEditar.especialidad || '',
         email: especialistaAEditar.email || '',
         telefono: especialistaAEditar.telefono || '',
         password: '', 
         activo: especialistaAEditar.activo ?? true,
-        foto: especialistaAEditar.foto_url || ''
+        foto_url: especialistaAEditar.foto_url || ''
       });
     }
   }, [especialistaAEditar]);
 
+  const subirFoto = async (archivo) => {
+    const nombreArchivo = `${Date.now()}_${archivo.name}`;
+    const { data, error } = await supabase.storage
+      .from('fotos-empleados')
+      .upload(nombreArchivo, archivo);
+
+    if (error) throw error;
+
+    const { data: urlData } = supabase.storage
+      .from('fotos-empleados')
+      .getPublicUrl(nombreArchivo);
+
+    return urlData.publicUrl;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (enviando) return;
+    
+    // Validación de DNI para evitar el error de "Falta DNI"
+    if (!formData.dni) {
+      alert("Atención: El DNI es obligatorio para guardar el perfil.");
+      return;
+    }
+
     setEnviando(true);
 
     try {
+      let urlFinal = formData.foto_url;
+
+      if (archivoFoto) {
+        urlFinal = await subirFoto(archivoFoto);
+      }
+
+      const datosParaGuardar = { ...formData, foto_url: urlFinal };
+
       if (especialistaAEditar) {
-        // --- EDITAR: Solo base de datos, no afecta sesión ---
-        await alGuardar(formData);
+        await alGuardar(datosParaGuardar);
         alCerrar();
       } else {
-        // --- NUEVO: Registro sin pisar la sesión del Admin ---
-        
-        // 1. Extraemos la URL y Key del cliente que ya tienes importado
         const supabaseUrl = supabase.supabaseUrl;
         const supabaseKey = supabase.supabaseKey;
 
-        // 2. Creamos un cliente "desechable" que no guarda sesión
         const authInvisible = createClient(supabaseUrl, supabaseKey, {
-          auth: {
-            persistSession: false, // <-- CLAVE: No guarda nada en LocalStorage
-            autoRefreshToken: false,
-            detectSessionInUrl: false
-          }
+          auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
         });
 
-        const { data, error } = await authInvisible.auth.signUp({
+        const { error } = await authInvisible.auth.signUp({
           email: formData.email.trim().toLowerCase(),
           password: formData.password,
           options: {
-            data: {
-              nombre: formData.nombre,
-              apellido: formData.apellido,
-              rol: 'EMPLEADO',
-              especialidad: formData.especialidad,
-              dni: formData.dni,
-              telefono: formData.telefono,
-              foto_url: formData.foto,
-              activo: true
-            }
+            data: { ...datosParaGuardar, rol: 'EMPLEADO', activo: true }
           }
         });
 
         if (error) throw error;
         
-        // 3. Avisamos al padre (Equipo.jsx) para que actualice la lista visual
-        await alGuardar(formData);
+        await alGuardar(datosParaGuardar);
         alCerrar();
       }
     } catch (error) {
-      // Si el error es el 500 de la base de datos que mencionaste antes, 
-      // pero el usuario aparece igual, el catch lo capturará aquí.
-      alert("Atención: " + error.message);
+      alert("Error: " + error.message);
     } finally {
       setEnviando(false);
     }
@@ -92,7 +109,28 @@ const ModalFormulario = ({ alCerrar, alGuardar, especialistaAEditar }) => {
         <p style={styles.subtitulo}>REGISTRO DE STAFF</p>
         
         <form onSubmit={handleSubmit}>
-          {/* ... resto de tu formulario (campos Nombre, DNI, etc.) ... */}
+          
+          <div style={styles.seccionFoto}>
+            <div style={styles.previewCirculo}>
+              {archivoFoto ? (
+                <img src={URL.createObjectURL(archivoFoto)} style={styles.imgPreview} alt="Preview" />
+              ) : formData.foto_url ? (
+                <img src={formData.foto_url} style={styles.imgPreview} alt="Foto" />
+              ) : (
+                <span style={{color: '#d1c4b9', fontSize: '2rem'}}>👤</span>
+              )}
+            </div>
+            <label style={styles.labelFoto}>
+              {especialistaAEditar ? 'CAMBIAR FOTO' : 'SUBIR FOTO'}
+              <input 
+                type="file" 
+                accept="image/*" 
+                hidden 
+                onChange={(e) => setArchivoFoto(e.target.files[0])} 
+              />
+            </label>
+          </div>
+
           <div style={styles.row}>
             <div style={styles.campo}>
               <label style={styles.label}>NOMBRE</label>
@@ -110,13 +148,17 @@ const ModalFormulario = ({ alCerrar, alGuardar, especialistaAEditar }) => {
               <input 
                 style={{
                   ...styles.input, 
-                  backgroundColor: especialistaAEditar ? '#f5f5f5' : '#fdfcfb',
-                  color: especialistaAEditar ? '#999' : '#555',
+                  // Si tiene DNI previo lo bloqueamos, si no, dejamos que lo complete
+                  backgroundColor: (especialistaAEditar && formData.dni) ? '#f5f5f5' : '#fdfcfb',
+                  color: (especialistaAEditar && formData.dni) ? '#999' : '#555',
+                  border: !formData.dni ? '1px solid #e74c3c' : '1px solid #f2e9e1'
                 }} 
                 type="text" 
+                placeholder="Ingresar DNI"
                 value={formData.dni} 
-                onChange={(e) => !especialistaAEditar && setFormData({...formData, dni: e.target.value.replace(/\D/g, '')})} 
-                readOnly={!!especialistaAEditar}
+                // Solo es de lectura si ya existe un DNI y estamos editando
+                readOnly={!!(especialistaAEditar && formData.dni)}
+                onChange={(e) => setFormData({...formData, dni: e.target.value.replace(/\D/g, '')})} 
               />
             </div>
             <div style={styles.campo}>
@@ -160,7 +202,6 @@ const ModalFormulario = ({ alCerrar, alGuardar, especialistaAEditar }) => {
   );
 };
 
-// ... (los estilos se mantienen igual)
 const styles = {
   overlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(26, 26, 26, 0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000, backdropFilter: 'blur(4px)' },
   modal: { background: '#fff', padding: '40px', borderRadius: '40px', width: '450px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', overflowY: 'auto', maxHeight: '90vh' },
@@ -171,7 +212,11 @@ const styles = {
   label: { display: 'block', fontSize: '0.65rem', color: '#b5926d', marginBottom: '8px', fontWeight: 'bold' },
   input: { width: '100%', padding: '12px', borderRadius: '15px', border: '1px solid #f2e9e1', outline: 'none', color: '#555', boxSizing: 'border-box', backgroundColor: '#fdfcfb' },
   btnGuardar: { width: '100%', background: '#a6835a', color: 'white', border: 'none', padding: '15px', borderRadius: '30px', cursor: 'pointer', fontSize: '0.9rem', marginTop: '10px', fontWeight: 'bold' },
-  btnNoLink: { background: 'none', border: 'none', color: '#a6835a', cursor: 'pointer', fontSize: '0.8rem', marginTop: '15px', textDecoration: 'underline' }
+  btnNoLink: { background: 'none', border: 'none', color: '#a6835a', cursor: 'pointer', fontSize: '0.8rem', marginTop: '15px', textDecoration: 'underline' },
+  seccionFoto: { display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '25px' },
+  previewCirculo: { width: '90px', height: '90px', borderRadius: '50%', backgroundColor: '#fdfcfb', border: '2px solid #f2e9e1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginBottom: '10px' },
+  imgPreview: { width: '100%', height: '100%', objectFit: 'cover' },
+  labelFoto: { fontSize: '0.6rem', color: '#a6835a', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline', letterSpacing: '1px' }
 };
 
 export default ModalFormulario;
