@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ModalFiltroEspecialistas from '../components/Servicios/ModalFiltroEspecialistas';
 
-// --- MODAL DE CONFIRMACIÓN ---
+// --- MODAL DE CONFIRMACIÓN (Se mantiene igual) ---
 const ModalConfirmacion = ({ mensaje, alConfirmar, alCancelar }) => (
   <div style={styles.alertOverlay}>
     <div style={styles.alertModal}>
@@ -31,6 +31,9 @@ export default function Servicios() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
 
+  // --- NUEVO: Estado para saber qué card tiene el mouse encima ---
+  const [hoverId, setHoverId] = useState(null);
+
   const [formData, setFormData] = useState({ id: null, nombre: '', descripcion: '', precio: '', duracion_min: '', foto_url: '' });
   const [confirmacion, setConfirmacion] = useState({ visible: false, id: null });
 
@@ -48,7 +51,6 @@ export default function Servicios() {
     setCargando(false);
   };
 
-  // --- SUBIDA DE FOTO ---
   const manejarSubidaFoto = async (e) => {
     const archivo = e.target.files[0];
     if (!archivo) return;
@@ -71,10 +73,8 @@ export default function Servicios() {
     setMostrarFiltro(true);
   };
 
-  // --- AQUÍ REINSTALAMOS LA FUNCIÓN QUE SE HABÍA BORRADO ---
   const finalizarSeleccion = (especialista) => {
     setMostrarFiltro(false);
-    // Enviamos al usuario a la página de Equipo con los datos necesarios para abrir el calendario
     navigate('/equipo', { 
       state: { 
         servicioElegido: servicioEnProceso, 
@@ -91,7 +91,7 @@ export default function Servicios() {
       descripcion: formData.descripcion,
       precio: parseFloat(formData.precio),
       duracion_min: parseInt(formData.duracion_min),
-      foto_url: formData.foto_url, // IMPORTANTE: Creá esta columna en Supabase
+      foto_url: formData.foto_url,
       activo: true
     };
 
@@ -130,35 +130,59 @@ export default function Servicios() {
       </header>
 
       <div style={styles.grid}>
-        {servicios.map((s) => (
-          <div key={s.id} style={{ ...styles.card, backgroundImage: s.foto_url ? `url(${s.foto_url})` : 'none', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-            {s.foto_url && <div style={styles.cardOverlay}></div>}
+        {servicios.map((s) => {
+          const estaEnHover = hoverId === s.id;
 
-            {isAdmin && (
-              <div style={styles.menuContenedor}>
-                <button style={styles.optionsBadge} onClick={() => setMenuAbierto(menuAbierto === s.id ? null : s.id)}>⋮</button>
-                {menuAbierto === s.id && (
-                  <div style={styles.dropdown}>
-                    <button style={styles.dropdownItem} onClick={() => prepararEdicion(s)}>✏️ Editar</button>
-                    <button style={{...styles.dropdownItem, color: '#e74c3c'}} onClick={() => {setConfirmacion({visible:true, id:s.id}); setMenuAbierto(null);}}>🗑️ Eliminar</button>
+          return (
+            <div 
+              key={s.id} 
+              onMouseEnter={() => setHoverId(s.id)}
+              onMouseLeave={() => setHoverId(null)}
+              style={{ 
+                ...styles.card, 
+                backgroundImage: s.foto_url ? `url(${s.foto_url})` : 'none', 
+                backgroundSize: 'cover', 
+                backgroundPosition: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              {/* CAPA DE TEXTO: Solo aparece cuando estaEnHover es true */}
+              <div style={{
+                ...styles.cardOverlay,
+                opacity: estaEnHover ? 1 : 0,
+                visibility: estaEnHover ? 'visible' : 'hidden',
+                transform: estaEnHover ? 'translateY(0)' : 'translateY(20px)',
+                transition: 'all 0.4s ease-in-out'
+              }}>
+                  <h2 style={{...styles.servicioNombre, textTransform: 'capitalize'}}>{s.nombre.toLowerCase()}</h2>
+                  <p style={styles.servicioDescripcion}>{s.descripcion}</p>
+                  <div style={styles.infoContenedor}>
+                    <p style={styles.duracionTexto}>DURACIÓN: {s.duracion_min} MIN</p>
+                    <p style={styles.precioTexto}>${Number(s.precio).toLocaleString('es-AR')}</p>
                   </div>
-                )}
+                  <button style={styles.btnReservar} onClick={(e) => { e.stopPropagation(); iniciarReserva(s); }}>
+                    Reservar Turno
+                  </button>
               </div>
-            )}
 
-            <div style={{ position: 'relative', zIndex: 2 }}>
-                <h2 style={{...styles.servicioNombre, textTransform: 'capitalize'}}>{s.nombre.toLowerCase()}</h2>
-                <p style={styles.servicioDescripcion}>{s.descripcion}</p>
-                <div style={styles.infoContenedor}>
-                  <p style={styles.duracionTexto}>DURACIÓN: {s.duracion_min} MIN</p>
-                  <p style={styles.precioTexto}>${Number(s.precio).toLocaleString('es-AR')}</p>
+              {/* MENÚ DE ADMIN (Fuera del overlay para que no se oculte al admin) */}
+              {isAdmin && (
+                <div style={styles.menuContenedor}>
+                  <button style={styles.optionsBadge} onClick={(e) => { e.stopPropagation(); setMenuAbierto(menuAbierto === s.id ? null : s.id); }}>⋮</button>
+                  {menuAbierto === s.id && (
+                    <div style={styles.dropdown}>
+                      <button style={styles.dropdownItem} onClick={() => prepararEdicion(s)}>✏️ Editar</button>
+                      <button style={{...styles.dropdownItem, color: '#e74c3c'}} onClick={() => dispararEliminacion(s.id)}>🗑️ Eliminar</button>
+                    </div>
+                  )}
                 </div>
-                <button style={styles.btnReservar} onClick={() => iniciarReserva(s)}>Reservar Turno</button>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
+      {/* MODALES SE MANTIENEN IGUAL... */}
       {modalAbierto && (
         <div style={styles.overlay}>
           <div style={styles.modal}>
@@ -184,11 +208,7 @@ export default function Servicios() {
       {confirmacion.visible && (
         <ModalConfirmacion 
           mensaje="Se eliminará permanentemente."
-          alConfirmar={async () => {
-             await supabase.from('servicios').delete().eq('id', confirmacion.id);
-             obtenerServicios();
-             setConfirmacion({visible:false, id:null});
-          }}
+          alConfirmar={ejecutarEliminacion}
           alCancelar={() => setConfirmacion({ visible: false, id: null })}
         />
       )}
@@ -197,7 +217,7 @@ export default function Servicios() {
         <ModalFiltroEspecialistas 
           servicio={servicioEnProceso} 
           alCerrar={() => setMostrarFiltro(false)} 
-          alSeleccionar={finalizarSeleccion} // <--- RECONECTADO
+          alSeleccionar={finalizarSeleccion} 
         />
       )}
     </main>
@@ -211,12 +231,11 @@ const styles = {
   subtituloHeader: { color: '#bfa38a', fontSize: '0.8rem', letterSpacing: '3px', fontWeight: '600' },
   grid: { display: 'flex', flexWrap: 'wrap', gap: '40px', justifyContent: 'center', maxWidth: '1200px', margin: '0 auto' },
   
-  // Card modificada para posicionamiento relativo
   card: { 
     backgroundColor: '#ffffff', 
-    borderRadius: '12px', 
-    padding: '45px 30px', 
+    borderRadius: '20px', 
     width: '320px', 
+    height: '400px', // Altura fija para que la foto luzca
     textAlign: 'center', 
     boxShadow: '0 10px 30px rgba(0,0,0,0.03)', 
     position: 'relative', 
@@ -224,15 +243,19 @@ const styles = {
     overflow: 'hidden' 
   },
 
-  // Capa para leer texto (Overlay)
   cardOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.82)', // Blanco semi-transparente
-    zIndex: 1
+    backgroundColor: 'rgba(243, 236, 228, 0.95)', // Casi sólido para tapar la foto y leer bien
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '30px',
+    zIndex: 2
   },
 
   menuContenedor: { position: 'absolute', top: '15px', right: '15px', zIndex: 10 },
@@ -252,7 +275,6 @@ const styles = {
   input: { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontFamily: 'sans-serif' },
   btnEliminarForm: { backgroundColor: '#fdeaea', color: '#e74c3c', border: 'none', padding: '12px', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold', flex: 1 },
 
-  // --- Estilos de la Alerta ---
   alertOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000, backdropFilter: 'blur(5px)' },
   alertModal: { backgroundColor: '#fff', padding: '45px 40px', borderRadius: '40px', width: '420px', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', border: '1px solid #f2e9e1' },
   alertIcon: { width: '65px', height: '65px', borderRadius: '50%', border: '2px solid #c5a37d', color: '#c5a37d', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '32px', margin: '0 auto 25px', fontWeight: 'bold' },
