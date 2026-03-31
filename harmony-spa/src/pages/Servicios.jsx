@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ModalFiltroEspecialistas from '../components/Servicios/ModalFiltroEspecialistas';
 
-// --- MODAL DE CONFIRMACIÓN (Se mantiene igual) ---
+// --- MODAL DE CONFIRMACIÓN ---
 const ModalConfirmacion = ({ mensaje, alConfirmar, alCancelar }) => (
   <div style={styles.alertOverlay}>
     <div style={styles.alertModal}>
@@ -30,9 +30,10 @@ export default function Servicios() {
   const [menuAbierto, setMenuAbierto] = useState(null); 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
-
-  // --- NUEVO: Estado para saber qué card tiene el mouse encima ---
   const [hoverId, setHoverId] = useState(null);
+
+  // --- NUEVO: Estado para errores de validación ---
+  const [errores, setErrores] = useState({});
 
   const [formData, setFormData] = useState({ id: null, nombre: '', descripcion: '', precio: '', duracion_min: '', foto_url: '' });
   const [confirmacion, setConfirmacion] = useState({ visible: false, id: null });
@@ -84,8 +85,23 @@ export default function Servicios() {
     });
   };
 
+  // --- NUEVO: Función de Validación ---
+  const validarFormulario = () => {
+    let nuevosErrores = {};
+    if (!formData.nombre.trim()) nuevosErrores.nombre = "El nombre es obligatorio.";
+    if (formData.descripcion.length < 10) nuevosErrores.descripcion = "La descripción debe tener al menos 10 caracteres.";
+    if (!formData.precio || formData.precio <= 0) nuevosErrores.precio = "El precio debe ser mayor a 0.";
+    if (!formData.duracion_min || formData.duracion_min < 15) nuevosErrores.duracion = "La duración mínima es de 15 min.";
+    
+    setErrores(nuevosErrores);
+    return Object.keys(nuevosErrores).length === 0;
+  };
+
   const guardarCambios = async (e) => {
     e.preventDefault();
+    
+    if (!validarFormulario()) return; // Detener si hay errores
+
     const payload = {
       nombre: formData.nombre.trim(),
       descripcion: formData.descripcion,
@@ -106,6 +122,7 @@ export default function Servicios() {
       obtenerServicios();
       setModalAbierto(false);
       setFormData({ id: null, nombre: '', descripcion: '', precio: '', duracion_min: '', foto_url: '' });
+      setErrores({});
     } catch (error) {
       alert("No se pudo guardar: " + error.message);
     }
@@ -113,8 +130,24 @@ export default function Servicios() {
 
   const prepararEdicion = (s) => {
     setFormData({ id: s.id, nombre: s.nombre, descripcion: s.descripcion, precio: s.precio, duracion_min: s.duracion_min, foto_url: s.foto_url || '' });
+    setErrores({});
     setMenuAbierto(null);
     setModalAbierto(true);
+  };
+
+  const dispararEliminacion = (id) => {
+    setMenuAbierto(null);
+    setConfirmacion({ visible: true, id: id });
+  };
+
+  const ejecutarEliminacion = async () => {
+    const { error } = await supabase.from('servicios').delete().eq('id', confirmacion.id);
+    if (!error) {
+      obtenerServicios();
+      setConfirmacion({ visible: false, id: null });
+    } else {
+      alert("Error: " + error.message);
+    }
   };
 
   return (
@@ -123,7 +156,7 @@ export default function Servicios() {
         <h1 style={styles.tituloHeader}>Nuestros Servicios</h1>
         <p style={styles.subtituloHeader}>RESERVA CON EL 30% DE SEÑA</p>
         {isAdmin && (
-          <button style={styles.btnNuevo} onClick={() => { setFormData({id: null, nombre:'', descripcion:'', precio:'', duracion_min:'', foto_url: ''}); setModalAbierto(true); }}>
+          <button style={styles.btnNuevo} onClick={() => { setFormData({id: null, nombre:'', descripcion:'', precio:'', duracion_min:'', foto_url: ''}); setErrores({}); setModalAbierto(true); }}>
             + AGREGAR SERVICIO
           </button>
         )}
@@ -146,7 +179,6 @@ export default function Servicios() {
                 cursor: 'pointer'
               }}
             >
-              {/* CAPA DE TEXTO: Solo aparece cuando estaEnHover es true */}
               <div style={{
                 ...styles.cardOverlay,
                 opacity: estaEnHover ? 1 : 0,
@@ -165,7 +197,6 @@ export default function Servicios() {
                   </button>
               </div>
 
-              {/* MENÚ DE ADMIN (Fuera del overlay para que no se oculte al admin) */}
               {isAdmin && (
                 <div style={styles.menuContenedor}>
                   <button style={styles.optionsBadge} onClick={(e) => { e.stopPropagation(); setMenuAbierto(menuAbierto === s.id ? null : s.id); }}>⋮</button>
@@ -182,22 +213,45 @@ export default function Servicios() {
         })}
       </div>
 
-      {/* MODALES SE MANTIENEN IGUAL... */}
       {modalAbierto && (
         <div style={styles.overlay}>
           <div style={styles.modal}>
-            <h2 style={{color: '#8c6d4f', marginBottom: '20px'}}>{formData.id ? 'Editar' : 'Nuevo'} Servicio</h2>
+            <h2 style={{color: '#8c6d4f', marginBottom: '10px'}}>{formData.id ? 'Editar' : 'Nuevo'} Servicio</h2>
+            
+            {/* CARTEL DE VALIDACIÓN DINÁMICO */}
+            {Object.keys(errores).length > 0 && (
+              <div style={styles.bannerError}>
+                ⚠️ Por favor, revisa los campos marcados.
+              </div>
+            )}
+
             <form onSubmit={guardarCambios} style={styles.form}>
               <div style={{ textAlign: 'left' }}>
                 <label style={{ fontSize: '0.7rem', color: '#8c6d4f', fontWeight: 'bold' }}>IMAGEN DE FONDO</label>
                 <input type="file" accept="image/*" onChange={manejarSubidaFoto} style={{ ...styles.input, marginTop: '5px' }} />
               </div>
-              <input style={styles.input} placeholder="Nombre" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} required />
-              <textarea style={{...styles.input, minHeight: '80px'}} placeholder="Descripción" value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} />
-              <input style={styles.input} type="number" placeholder="Precio" value={formData.precio} onChange={e => setFormData({...formData, precio: e.target.value})} required />
-              <input style={styles.input} type="number" placeholder="Duración (min)" value={formData.duracion_min} onChange={e => setFormData({...formData, duracion_min: e.target.value})} required />
+
+              <div style={{ textAlign: 'left' }}>
+                <input style={{...styles.input, borderColor: errores.nombre ? '#e74c3c' : '#ddd'}} placeholder="Nombre" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} />
+                {errores.nombre && <span style={styles.errorText}>{errores.nombre}</span>}
+              </div>
+
+              <div style={{ textAlign: 'left' }}>
+                <textarea style={{...styles.input, minHeight: '80px', borderColor: errores.descripcion ? '#e74c3c' : '#ddd'}} placeholder="Descripción" value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} />
+                {errores.descripcion && <span style={styles.errorText}>{errores.descripcion}</span>}
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ flex: 1, textAlign: 'left' }}>
+                  <input style={{...styles.input, borderColor: errores.precio ? '#e74c3c' : '#ddd'}} type="number" placeholder="Precio" value={formData.precio} onChange={e => setFormData({...formData, precio: e.target.value})} />
+                </div>
+                <div style={{ flex: 1, textAlign: 'left' }}>
+                  <input style={{...styles.input, borderColor: errores.duracion ? '#e74c3c' : '#ddd'}} type="number" placeholder="Duración (min)" value={formData.duracion_min} onChange={e => setFormData({...formData, duracion_min: e.target.value})} />
+                </div>
+              </div>
+
               <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
-                <button type="button" onClick={() => setModalAbierto(false)} style={styles.btnEliminarForm}>Cancelar</button>
+                <button type="button" onClick={() => { setModalAbierto(false); setErrores({}); }} style={styles.btnEliminarForm}>Cancelar</button>
                 <button type="submit" disabled={subiendoFoto} style={styles.btnReservar}>Guardar</button>
               </div>
             </form>
@@ -225,6 +279,7 @@ export default function Servicios() {
 }
 
 const styles = {
+  // ... (tus otros estilos se mantienen exactamente igual)
   container: { backgroundColor: '#f3ece4', minHeight: '100vh', padding: '80px 20px', fontFamily: "'Playfair Display', serif" },
   header: { textAlign: 'center', marginBottom: '60px' },
   tituloHeader: { color: '#8c6d4f', fontSize: '3.2rem', marginBottom: '10px' },
@@ -234,13 +289,14 @@ const styles = {
   card: { 
     backgroundColor: '#ffffff', 
     borderRadius: '20px', 
-    width: '320px', 
-    height: '400px', // Altura fija para que la foto luzca
+    width: '350px', 
+    height: '500px', 
     textAlign: 'center', 
-    boxShadow: '0 10px 30px rgba(0,0,0,0.03)', 
+    boxShadow: '0 15px 35px rgba(0,0,0,0.08)', 
     position: 'relative', 
     border: '1px solid #f2e9e1',
-    overflow: 'hidden' 
+    overflow: 'hidden',
+    transition: 'transform 0.3s ease'
   },
 
   cardOverlay: {
@@ -249,31 +305,37 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(243, 236, 228, 0.95)', // Casi sólido para tapar la foto y leer bien
+    backgroundColor: 'rgba(243, 236, 228, 0.96)', 
     display: 'flex',
     flexDirection: 'column',
-    justifyContent: 'center',
+    justifyContent: 'space-between', 
     alignItems: 'center',
-    padding: '30px',
-    zIndex: 2
+    padding: '45px 30px', 
+    zIndex: 2, 
+    transition: 'all 0.4s ease-in-out'
   },
 
   menuContenedor: { position: 'absolute', top: '15px', right: '15px', zIndex: 10 },
-  optionsBadge: { background: 'white', border: '1px solid #f2e9e1', borderRadius: '50%', width: '35px', height: '35px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d1c4b9', fontSize: '1.2rem', cursor: 'pointer' },
+  optionsBadge: { background: 'white', border: '1px solid #f2e9e1', borderRadius: '50%', width: '35px', height: '35px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d1c4b9', fontSize: '1.2rem', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' },
   dropdown: { position: 'absolute', right: '0', top: '40px', backgroundColor: 'white', boxShadow: '0px 8px 16px rgba(0,0,0,0.1)', borderRadius: '8px', zIndex: 100, minWidth: '130px', border: '1px solid #eee' },
-  dropdownItem: { width: '100%', background: 'none', border: 'none', padding: '10px 15px', textAlign: 'left', cursor: 'pointer', fontSize: '14px' },
-  servicioNombre: { color: '#8c6d4f', fontSize: '2rem', marginBottom: '15px' },
-  servicioDescripcion: { color: '#5d4d3d', fontSize: '0.9rem', lineHeight: '1.6', marginBottom: '25px', minHeight: '50px', fontWeight: '500' },
-  infoContenedor: { marginBottom: '30px' },
-  duracionTexto: { color: '#a6835a', fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '1.5px', marginBottom: '10px' },
-  precioTexto: { color: '#8c6d4f', fontSize: '1.6rem', fontWeight: '500' },
-  btnReservar: { backgroundColor: '#a6835a', color: '#fff', border: 'none', padding: '12px 35px', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold' },
+  dropdownItem: { width: '100%', background: 'none', border: 'none', padding: '10px 15px', textAlign: 'left', cursor: 'pointer', fontSize: '14px', fontFamily: 'sans-serif' },
+  
+  servicioNombre: { color: '#8c6d4f', fontSize: '1.8rem', marginBottom: '5px', lineHeight: '1.2' },
+  servicioDescripcion: { color: '#5d4d3d', fontSize: '1rem', lineHeight: '1.6', margin: '15px 0', minHeight: '80px', fontWeight: '500', display: '-webkit-box', WebkitLineClamp: 5, WebkitBoxOrient: 'vertical', overflow: 'hidden' },
+  infoContenedor: { marginBottom: '15px' },
+  duracionTexto: { color: '#a6835a', fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '2px', marginBottom: '5px', textTransform: 'uppercase' },
+  precioTexto: { color: '#8c6d4f', fontSize: '1.7rem', fontWeight: '600' },
+  btnReservar: { backgroundColor: '#a6835a', color: '#fff', border: 'none', padding: '16px 45px', borderRadius: '30px', cursor: 'pointer', fontWeight: 'bold', letterSpacing: '1px', fontSize: '0.9rem' },
   btnNuevo: { backgroundColor: '#a6835a', color: 'white', border: 'none', padding: '10px 25px', borderRadius: '25px', cursor: 'pointer', marginTop: '20px', letterSpacing: '1px' },
   overlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 },
-  modal: { backgroundColor: 'white', padding: '40px', borderRadius: '15px', width: '90%', maxWidth: '400px' },
+  modal: { backgroundColor: 'white', padding: '40px', borderRadius: '15px', width: '90%', maxWidth: '450px' },
   form: { display: 'flex', flexDirection: 'column', gap: '15px' },
-  input: { padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontFamily: 'sans-serif' },
+  input: { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontFamily: 'sans-serif', boxSizing: 'border-box' },
   btnEliminarForm: { backgroundColor: '#fdeaea', color: '#e74c3c', border: 'none', padding: '12px', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold', flex: 1 },
+
+  // --- NUEVOS ESTILOS DE VALIDACIÓN ---
+  bannerError: { backgroundColor: '#fdeaea', color: '#e74c3c', padding: '10px', borderRadius: '8px', marginBottom: '15px', fontSize: '0.85rem', fontWeight: 'bold', border: '1px solid #f5c6cb' },
+  errorText: { color: '#e74c3c', fontSize: '0.7rem', marginTop: '4px', fontWeight: 'bold' },
 
   alertOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000, backdropFilter: 'blur(5px)' },
   alertModal: { backgroundColor: '#fff', padding: '45px 40px', borderRadius: '40px', width: '420px', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', border: '1px solid #f2e9e1' },
