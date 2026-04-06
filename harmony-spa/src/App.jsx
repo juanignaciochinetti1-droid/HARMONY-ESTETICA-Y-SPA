@@ -9,24 +9,34 @@ import LoginModal from './components/Layout/LoginModal';
 import MisTurnos from './components/Clientes/MisTurnos';
 import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
-import Admin from './pages/Admin'; 
+import Admin from './pages/Admin';
 
-// --- 1. COMPONENTE DEL CARTEL DE CONEXIÓN ---
-const AlertaConexion = ({ visible }) => {
+// --- 1. COMPONENTE DE ALERTA DE CONEXIÓN (PANTALLA COMPLETA) ---
+const OfflineAlert = ({ visible }) => {
   if (!visible) return null;
+
   return (
-    <div style={styles.barraConexion}>
-      <div style={styles.contenidoBarra}>
-        <span style={{ fontSize: '1.2rem' }}>⚠️</span>
-        <span style={styles.textoBarra}>
-          <strong>CONEXIÓN INTERRUMPIDA:</strong> Las funciones de guardado se han pausado para proteger tus datos. 
-          <span style={styles.reconectando}> Reconectando...</span>
-        </span>
+    <div style={styles.overlayOffline}>
+      <div style={styles.modalOffline}>
+        <div style={styles.iconOffline}>📡</div>
+        <h3 style={styles.titleOffline}>Conexión Perdida</h3>
+        <p style={styles.textOffline}>
+          Parece que no tienes conexión a internet. <br />
+          <strong>Harmony</strong> necesita estar en línea para guardar tus cambios y gestionar los turnos.
+        </p>
+        <div style={styles.loaderOffline}>
+          <div style={styles.barOffline}></div>
+        </div>
+        <p style={styles.subtextOffline}>Intentando reconectar automáticamente...</p>
       </div>
-      <style>{`
-        @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
-        @keyframes blink { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
-      `}</style>
+      <style>
+        {`
+          @keyframes loadingBar {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+          }
+        `}
+      </style>
     </div>
   );
 };
@@ -35,10 +45,10 @@ function App() {
   const { profile, loading, signOut } = useAuth();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   
-  // --- 2. ESTADO DE CONEXIÓN ---
+  // --- 2. LÓGICA DE DETECCIÓN DE RED ---
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  // --- NUEVO: ESTADO PARA RESPONSIVE GLOBAL ---
+  // --- ESTADO PARA RESPONSIVE GLOBAL ---
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -61,17 +71,17 @@ function App() {
     <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden' }}>
       
       {/* 3. CARTEL DE CONEXIÓN GLOBAL */}
-      <AlertaConexion visible={isOffline} />
+      <OfflineAlert visible={isOffline} />
 
       <Navbar onLoginClick={() => setIsLoginOpen(true)} userRole={profile?.rol} onLogout={signOut} />
       
       {/* 4. CONTENEDOR CON BLOQUEO ANTI-ERRORES Y ADAPTACIÓN MÓVIL */}
       <div style={{ 
-        opacity: isOffline ? 0.6 : 1, 
+        opacity: isOffline ? 0.3 : 1, 
         pointerEvents: isOffline ? 'none' : 'auto', 
-        filter: isOffline ? 'grayscale(0.4) blur(1px)' : 'none',
-        transition: 'all 0.5s ease',
-        padding: isMobile ? '0 10px' : '0' // Margen de seguridad en móviles
+        filter: isOffline ? 'grayscale(0.4) blur(2px)' : 'none',
+        transition: 'all 0.6s ease',
+        padding: isMobile ? '0 10px' : '0' 
       }}>
         <Routes>
           {/* RUTAS PÚBLICAS */}
@@ -88,7 +98,6 @@ function App() {
             </ProtectedRoute>
           } />
           
-          {/* RUTA DE ADMINISTRACIÓN */}
           <Route path="/admin" element={
             <ProtectedRoute roleRequired="ADMIN">
               <Admin />
@@ -104,36 +113,73 @@ function App() {
   );
 }
 
-// --- 5. ESTILOS ---
+// --- 5. ESTILOS INTEGRADOS ---
 const styles = {
   protectedSection: { paddingTop: '120px', textAlign: 'center', color: '#8c6d4f', fontFamily: 'serif' },
-  barraConexion: {
+  
+  overlayOffline: {
     position: 'fixed',
     top: 0,
     left: 0,
-    width: '100%',
-    backgroundColor: '#8c6d4f',
-    color: '#fff',
-    padding: '12px 0',
-    zIndex: 20000, 
-    textAlign: 'center',
-    animation: 'slideDown 0.4s ease-out',
-    boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
-  },
-  contenidoBarra: {
+    width: '100vw',
+    height: '100vh',
+    backgroundColor: 'rgba(252, 250, 247, 0.85)', 
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: '15px',
-    fontSize: '0.85rem'
+    zIndex: 99999, 
+    backdropFilter: 'blur(10px)',
   },
-  reconectando: {
-    marginLeft: '10px',
-    fontSize: '0.7rem',
-    textTransform: 'uppercase',
+  modalOffline: {
+    backgroundColor: '#fff',
+    padding: '50px 40px',
+    borderRadius: '40px',
+    width: '90%',
+    maxWidth: '450px',
+    textAlign: 'center',
+    boxShadow: '0 25px 60px rgba(140, 109, 79, 0.15)',
+    border: '1px solid #f2e9e1',
+  },
+  iconOffline: {
+    fontSize: '40px',
+    marginBottom: '20px',
+    filter: 'grayscale(1)',
+    opacity: 0.7
+  },
+  titleOffline: {
+    color: '#8c6d4f',
+    fontFamily: "'Playfair Display', serif",
+    fontSize: '2rem',
+    marginBottom: '15px',
+    fontWeight: '400'
+  },
+  textOffline: {
+    color: '#bfa38a',
+    fontSize: '1rem',
+    lineHeight: '1.6',
+    marginBottom: '30px',
+  },
+  loaderOffline: {
+    width: '100%',
+    height: '4px',
+    backgroundColor: '#f2e9e1',
+    borderRadius: '10px',
+    overflow: 'hidden',
+    position: 'relative',
+    marginBottom: '15px'
+  },
+  barOffline: {
+    width: '50%',
+    height: '100%',
+    backgroundColor: '#c5a37d',
+    borderRadius: '10px',
+    animation: 'loadingBar 1.5s infinite linear',
+  },
+  subtextOffline: {
+    color: '#d1c4b9',
+    fontSize: '0.75rem',
     letterSpacing: '1px',
-    animation: 'blink 1.5s infinite',
-    color: '#f2e9e1',
+    textTransform: 'uppercase',
     fontWeight: 'bold'
   }
 };
