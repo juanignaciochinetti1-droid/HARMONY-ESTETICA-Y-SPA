@@ -4,16 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ModalFiltroEspecialistas from '../components/Servicios/ModalFiltroEspecialistas';
 
-// --- MODAL DE CONFIRMACIÓN ---
-const ModalConfirmacion = ({ mensaje, alConfirmar, alCancelar }) => (
+// --- MODAL DE CONFIRMACIÓN / AVISOS ---
+const ModalConfirmacion = ({ titulo = "¿Estás seguro?", mensaje, icono = "!", alConfirmar, alCancelar, soloAviso = false }) => (
   <div style={styles.alertOverlay}>
     <div style={styles.alertModal}>
-      <div style={styles.alertIcon}>!</div>
-      <h3 style={styles.alertTitle}>¿Estás seguro?</h3>
+      <div style={{...styles.alertIcon, borderColor: icono === 'i' ? '#bfa38a' : '#c5a37d', color: icono === 'i' ? '#bfa38a' : '#c5a37d'}}>{icono}</div>
+      <h3 style={styles.alertTitle}>{titulo}</h3>
       <p style={styles.alertText}>{mensaje}</p>
       <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
-        <button style={styles.btnCancelarAlerta} onClick={alCancelar}>CANCELAR</button>
-        <button style={styles.btnConfirmarAlerta} onClick={alConfirmar}>ELIMINAR</button>
+        {!soloAviso && <button style={styles.btnCancelarAlerta} onClick={alCancelar}>CANCELAR</button>}
+        <button style={styles.btnConfirmarAlerta} onClick={alConfirmar}>{soloAviso ? 'ENTENDIDO' : 'ELIMINAR'}</button>
       </div>
     </div>
   </div>
@@ -31,9 +31,11 @@ export default function Servicios() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
   const [hoverId, setHoverId] = useState(null);
-
-  // --- NUEVO: Estado para errores de validación ---
   const [errores, setErrores] = useState({});
+
+  // --- NUEVOS ESTADOS PARA VALIDACIÓN DE CAMBIOS ---
+  const [servicioOriginal, setServicioOriginal] = useState(null);
+  const [avisoSinCambios, setAvisoSinCambios] = useState(false);
 
   const [formData, setFormData] = useState({ id: null, nombre: '', descripcion: '', precio: '', duracion_min: '', foto_url: '' });
   const [confirmacion, setConfirmacion] = useState({ visible: false, id: null });
@@ -85,7 +87,6 @@ export default function Servicios() {
     });
   };
 
-  // --- NUEVO: Función de Validación ---
   const validarFormulario = () => {
     let nuevosErrores = {};
     if (!formData.nombre.trim()) nuevosErrores.nombre = "El nombre es obligatorio.";
@@ -100,7 +101,22 @@ export default function Servicios() {
   const guardarCambios = async (e) => {
     e.preventDefault();
     
-    if (!validarFormulario()) return; // Detener si hay errores
+    if (!validarFormulario()) return;
+
+    // --- LÓGICA DE DETECCIÓN DE CAMBIOS (PARA EDICIÓN) ---
+    if (formData.id && servicioOriginal) {
+      const huboCambios = 
+        formData.nombre.trim() !== servicioOriginal.nombre ||
+        formData.descripcion.trim() !== servicioOriginal.descripcion ||
+        parseFloat(formData.precio) !== parseFloat(servicioOriginal.precio) ||
+        parseInt(formData.duracion_min) !== parseInt(servicioOriginal.duracion_min) ||
+        formData.foto_url !== servicioOriginal.foto_url;
+
+      if (!huboCambios) {
+        setAvisoSinCambios(true); // Abrir el cartel de "Sin cambios"
+        return; 
+      }
+    }
 
     const payload = {
       nombre: formData.nombre.trim(),
@@ -122,6 +138,7 @@ export default function Servicios() {
       obtenerServicios();
       setModalAbierto(false);
       setFormData({ id: null, nombre: '', descripcion: '', precio: '', duracion_min: '', foto_url: '' });
+      setServicioOriginal(null);
       setErrores({});
     } catch (error) {
       alert("No se pudo guardar: " + error.message);
@@ -129,7 +146,16 @@ export default function Servicios() {
   };
 
   const prepararEdicion = (s) => {
-    setFormData({ id: s.id, nombre: s.nombre, descripcion: s.descripcion, precio: s.precio, duracion_min: s.duracion_min, foto_url: s.foto_url || '' });
+    const datosIniciales = { 
+        id: s.id, 
+        nombre: s.nombre, 
+        descripcion: s.descripcion, 
+        precio: s.precio, 
+        duracion_min: s.duracion_min, 
+        foto_url: s.foto_url || '' 
+    };
+    setFormData(datosIniciales);
+    setServicioOriginal(datosIniciales); // Guardamos la "foto" original para comparar luego
     setErrores({});
     setMenuAbierto(null);
     setModalAbierto(true);
@@ -156,7 +182,7 @@ export default function Servicios() {
         <h1 style={styles.tituloHeader}>Nuestros Servicios</h1>
         <p style={styles.subtituloHeader}>RESERVA CON EL 30% DE SEÑA</p>
         {isAdmin && (
-          <button style={styles.btnNuevo} onClick={() => { setFormData({id: null, nombre:'', descripcion:'', precio:'', duracion_min:'', foto_url: ''}); setErrores({}); setModalAbierto(true); }}>
+          <button style={styles.btnNuevo} onClick={() => { setFormData({id: null, nombre:'', descripcion:'', precio:'', duracion_min:'', foto_url: ''}); setServicioOriginal(null); setErrores({}); setModalAbierto(true); }}>
             + AGREGAR SERVICIO
           </button>
         )}
@@ -217,30 +243,24 @@ export default function Servicios() {
         <div style={styles.overlay}>
           <div style={styles.modal}>
             <h2 style={{color: '#8c6d4f', marginBottom: '10px'}}>{formData.id ? 'Editar' : 'Nuevo'} Servicio</h2>
-            
-            {/* CARTEL DE VALIDACIÓN DINÁMICO */}
             {Object.keys(errores).length > 0 && (
               <div style={styles.bannerError}>
                 ⚠️ Por favor, revisa los campos marcados.
               </div>
             )}
-
             <form onSubmit={guardarCambios} style={styles.form}>
               <div style={{ textAlign: 'left' }}>
                 <label style={{ fontSize: '0.7rem', color: '#8c6d4f', fontWeight: 'bold' }}>IMAGEN DE FONDO</label>
                 <input type="file" accept="image/*" onChange={manejarSubidaFoto} style={{ ...styles.input, marginTop: '5px' }} />
               </div>
-
               <div style={{ textAlign: 'left' }}>
                 <input style={{...styles.input, borderColor: errores.nombre ? '#e74c3c' : '#ddd'}} placeholder="Nombre" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} />
                 {errores.nombre && <span style={styles.errorText}>{errores.nombre}</span>}
               </div>
-
               <div style={{ textAlign: 'left' }}>
                 <textarea style={{...styles.input, minHeight: '80px', borderColor: errores.descripcion ? '#e74c3c' : '#ddd'}} placeholder="Descripción" value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} />
                 {errores.descripcion && <span style={styles.errorText}>{errores.descripcion}</span>}
               </div>
-
               <div style={{ display: 'flex', gap: '10px' }}>
                 <div style={{ flex: 1, textAlign: 'left' }}>
                   <input style={{...styles.input, borderColor: errores.precio ? '#e74c3c' : '#ddd'}} type="number" placeholder="Precio" value={formData.precio} onChange={e => setFormData({...formData, precio: e.target.value})} />
@@ -249,7 +269,6 @@ export default function Servicios() {
                   <input style={{...styles.input, borderColor: errores.duracion ? '#e74c3c' : '#ddd'}} type="number" placeholder="Duración (min)" value={formData.duracion_min} onChange={e => setFormData({...formData, duracion_min: e.target.value})} />
                 </div>
               </div>
-
               <div style={{display: 'flex', gap: '10px', marginTop: '10px'}}>
                 <button type="button" onClick={() => { setModalAbierto(false); setErrores({}); }} style={styles.btnEliminarForm}>Cancelar</button>
                 <button type="submit" disabled={subiendoFoto} style={styles.btnReservar}>Guardar</button>
@@ -257,6 +276,17 @@ export default function Servicios() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* --- CARTEL INFORMATIVO: SIN CAMBIOS --- */}
+      {avisoSinCambios && (
+        <ModalConfirmacion 
+            titulo="Sin cambios"
+            mensaje="Para actualizar este servicio, debes modificar al menos un dato (nombre, descripción, precio o duración)."
+            icono="i"
+            soloAviso={true}
+            alConfirmar={() => setAvisoSinCambios(false)}
+        />
       )}
 
       {confirmacion.visible && (
@@ -279,47 +309,17 @@ export default function Servicios() {
 }
 
 const styles = {
-  // ... (tus otros estilos se mantienen exactamente igual)
   container: { backgroundColor: '#f3ece4', minHeight: '100vh', padding: '80px 20px', fontFamily: "'Playfair Display', serif" },
   header: { textAlign: 'center', marginBottom: '60px' },
   tituloHeader: { color: '#8c6d4f', fontSize: '3.2rem', marginBottom: '10px' },
   subtituloHeader: { color: '#bfa38a', fontSize: '0.8rem', letterSpacing: '3px', fontWeight: '600' },
   grid: { display: 'flex', flexWrap: 'wrap', gap: '40px', justifyContent: 'center', maxWidth: '1200px', margin: '0 auto' },
-  
-  card: { 
-    backgroundColor: '#ffffff', 
-    borderRadius: '20px', 
-    width: '350px', 
-    height: '500px', 
-    textAlign: 'center', 
-    boxShadow: '0 15px 35px rgba(0,0,0,0.08)', 
-    position: 'relative', 
-    border: '1px solid #f2e9e1',
-    overflow: 'hidden',
-    transition: 'transform 0.3s ease'
-  },
-
-  cardOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(243, 236, 228, 0.96)', 
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between', 
-    alignItems: 'center',
-    padding: '45px 30px', 
-    zIndex: 2, 
-    transition: 'all 0.4s ease-in-out'
-  },
-
+  card: { backgroundColor: '#ffffff', borderRadius: '20px', width: '350px', height: '500px', textAlign: 'center', boxShadow: '0 15px 35px rgba(0,0,0,0.08)', position: 'relative', border: '1px solid #f2e9e1', overflow: 'hidden', transition: 'transform 0.3s ease' },
+  cardOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(243, 236, 228, 0.96)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center', padding: '45px 30px', zIndex: 2, transition: 'all 0.4s ease-in-out' },
   menuContenedor: { position: 'absolute', top: '15px', right: '15px', zIndex: 10 },
   optionsBadge: { background: 'white', border: '1px solid #f2e9e1', borderRadius: '50%', width: '35px', height: '35px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d1c4b9', fontSize: '1.2rem', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' },
   dropdown: { position: 'absolute', right: '0', top: '40px', backgroundColor: 'white', boxShadow: '0px 8px 16px rgba(0,0,0,0.1)', borderRadius: '8px', zIndex: 100, minWidth: '130px', border: '1px solid #eee' },
   dropdownItem: { width: '100%', background: 'none', border: 'none', padding: '10px 15px', textAlign: 'left', cursor: 'pointer', fontSize: '14px', fontFamily: 'sans-serif' },
-  
   servicioNombre: { color: '#8c6d4f', fontSize: '1.8rem', marginBottom: '5px', lineHeight: '1.2' },
   servicioDescripcion: { color: '#5d4d3d', fontSize: '1rem', lineHeight: '1.6', margin: '15px 0', minHeight: '80px', fontWeight: '500', display: '-webkit-box', WebkitLineClamp: 5, WebkitBoxOrient: 'vertical', overflow: 'hidden' },
   infoContenedor: { marginBottom: '15px' },
@@ -332,11 +332,8 @@ const styles = {
   form: { display: 'flex', flexDirection: 'column', gap: '15px' },
   input: { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontFamily: 'sans-serif', boxSizing: 'border-box' },
   btnEliminarForm: { backgroundColor: '#fdeaea', color: '#e74c3c', border: 'none', padding: '12px', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold', flex: 1 },
-
-  // --- NUEVOS ESTILOS DE VALIDACIÓN ---
   bannerError: { backgroundColor: '#fdeaea', color: '#e74c3c', padding: '10px', borderRadius: '8px', marginBottom: '15px', fontSize: '0.85rem', fontWeight: 'bold', border: '1px solid #f5c6cb' },
   errorText: { color: '#e74c3c', fontSize: '0.7rem', marginTop: '4px', fontWeight: 'bold' },
-
   alertOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000, backdropFilter: 'blur(5px)' },
   alertModal: { backgroundColor: '#fff', padding: '45px 40px', borderRadius: '40px', width: '420px', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', border: '1px solid #f2e9e1' },
   alertIcon: { width: '65px', height: '65px', borderRadius: '50%', border: '2px solid #c5a37d', color: '#c5a37d', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '32px', margin: '0 auto 25px', fontWeight: 'bold' },
