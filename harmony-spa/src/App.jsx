@@ -45,36 +45,41 @@ function App() {
   const { profile, loading, signOut } = useAuth();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   
-  // --- 2. LÓGICA DE DETECCIÓN DE RED ---
+  // --- 2. LÓGICA DE DETECCIÓN DE RED Y RESPONSIVE ---
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('resize', handleResize);
     };
   }, []);
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh' }}>
+    <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden' }}>
       
       {/* 3. CARTEL DE CONEXIÓN GLOBAL */}
       <OfflineAlert visible={isOffline} />
 
       <Navbar onLoginClick={() => setIsLoginOpen(true)} userRole={profile?.rol} onLogout={signOut} />
       
-      {/* 4. CONTENEDOR DE RUTAS */}
+      {/* 4. CONTENEDOR PRINCIPAL: BLOQUEO ANTI-ERRORES Y ADAPTACIÓN MÓVIL */}
       <div style={{ 
         opacity: isOffline ? 0.3 : 1, 
         pointerEvents: isOffline ? 'none' : 'auto', 
-        filter: isOffline ? 'blur(4px)' : 'none',
-        transition: 'all 0.6s ease'
+        filter: isOffline ? 'grayscale(0.4) blur(4px)' : 'none',
+        transition: 'all 0.6s ease',
+        padding: isMobile ? '0 10px' : '0' 
       }}>
         <Routes>
           {/* RUTAS PÚBLICAS */}
@@ -91,6 +96,7 @@ function App() {
             </ProtectedRoute>
           } />
           
+          {/* RUTA DE ADMINISTRACIÓN */}
           <Route path="/admin" element={
             <ProtectedRoute roleRequired="ADMIN">
               <Admin />
@@ -110,7 +116,6 @@ function App() {
 const styles = {
   protectedSection: { paddingTop: '120px', textAlign: 'center', color: '#8c6d4f', fontFamily: 'serif' },
   
-  // Estilos del Modal Offline (Estética Harmony)
   overlayOffline: {
     position: 'fixed',
     top: 0,
