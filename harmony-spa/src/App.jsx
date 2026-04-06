@@ -45,8 +45,9 @@ function App() {
   const { profile, loading, signOut } = useAuth();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   
-  // --- 2. LÓGICA DE DETECCIÓN DE RED ---
+  // --- 2. LÓGICA DE DETECCIÓN DE RED Y RESPONSIVE ---
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   // --- ESTADO PARA RESPONSIVE GLOBAL ---
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -75,11 +76,11 @@ function App() {
 
       <Navbar onLoginClick={() => setIsLoginOpen(true)} userRole={profile?.rol} onLogout={signOut} />
       
-      {/* 4. CONTENEDOR CON BLOQUEO ANTI-ERRORES Y ADAPTACIÓN MÓVIL */}
+      {/* 4. CONTENEDOR PRINCIPAL: BLOQUEO ANTI-ERRORES Y ADAPTACIÓN MÓVIL */}
       <div style={{ 
         opacity: isOffline ? 0.3 : 1, 
         pointerEvents: isOffline ? 'none' : 'auto', 
-        filter: isOffline ? 'grayscale(0.4) blur(2px)' : 'none',
+        filter: isOffline ? 'grayscale(0.4) blur(4px)' : 'none',
         transition: 'all 0.6s ease',
         padding: isMobile ? '0 10px' : '0' 
       }}>
@@ -98,6 +99,7 @@ function App() {
             </ProtectedRoute>
           } />
           
+          {/* RUTA DE ADMINISTRACIÓN */}
           <Route path="/admin" element={
             <ProtectedRoute roleRequired="ADMIN">
               <Admin />
