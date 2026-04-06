@@ -4,15 +4,8 @@ import { supabase } from "../../lib/supabaseClient";
 
 const ModalFormulario = ({ alCerrar, alGuardar, especialistaAEditar }) => {
   const estadoInicial = {
-    nombre: '', 
-    apellido: '', 
-    dni: '', 
-    especialidad: '',
-    email: '', 
-    telefono: '', 
-    password: '', 
-    activo: true, 
-    foto_url: '' 
+    nombre: '', apellido: '', dni: '', especialidad: '',
+    email: '', telefono: '', password: '', activo: true, foto_url: '' 
   };
 
   const [formData, setFormData] = useState(estadoInicial);
@@ -54,7 +47,6 @@ const ModalFormulario = ({ alCerrar, alGuardar, especialistaAEditar }) => {
     e.preventDefault();
     if (enviando) return;
     
-    // Validación de DNI para evitar el error de "Falta DNI"
     if (!formData.dni) {
       alert("Atención: El DNI es obligatorio para guardar el perfil.");
       return;
@@ -64,37 +56,16 @@ const ModalFormulario = ({ alCerrar, alGuardar, especialistaAEditar }) => {
 
     try {
       let urlFinal = formData.foto_url;
-
       if (archivoFoto) {
         urlFinal = await subirFoto(archivoFoto);
       }
 
       const datosParaGuardar = { ...formData, foto_url: urlFinal };
 
-      if (especialistaAEditar) {
-        await alGuardar(datosParaGuardar);
-        alCerrar();
-      } else {
-        const supabaseUrl = supabase.supabaseUrl;
-        const supabaseKey = supabase.supabaseKey;
+      // Llamamos al padre. 
+      // El padre decidirá si cierra el modal basado en si hay cambios o no.
+      await alGuardar(datosParaGuardar);
 
-        const authInvisible = createClient(supabaseUrl, supabaseKey, {
-          auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
-        });
-
-        const { error } = await authInvisible.auth.signUp({
-          email: formData.email.trim().toLowerCase(),
-          password: formData.password,
-          options: {
-            data: { ...datosParaGuardar, rol: 'EMPLEADO', activo: true }
-          }
-        });
-
-        if (error) throw error;
-        
-        await alGuardar(datosParaGuardar);
-        alCerrar();
-      }
     } catch (error) {
       alert("Error: " + error.message);
     } finally {
@@ -148,7 +119,6 @@ const ModalFormulario = ({ alCerrar, alGuardar, especialistaAEditar }) => {
               <input 
                 style={{
                   ...styles.input, 
-                  // Si tiene DNI previo lo bloqueamos, si no, dejamos que lo complete
                   backgroundColor: (especialistaAEditar && formData.dni) ? '#f5f5f5' : '#fdfcfb',
                   color: (especialistaAEditar && formData.dni) ? '#999' : '#555',
                   border: !formData.dni ? '1px solid #e74c3c' : '1px solid #f2e9e1'
@@ -156,7 +126,6 @@ const ModalFormulario = ({ alCerrar, alGuardar, especialistaAEditar }) => {
                 type="text" 
                 placeholder="Ingresar DNI"
                 value={formData.dni} 
-                // Solo es de lectura si ya existe un DNI y estamos editando
                 readOnly={!!(especialistaAEditar && formData.dni)}
                 onChange={(e) => setFormData({...formData, dni: e.target.value.replace(/\D/g, '')})} 
               />

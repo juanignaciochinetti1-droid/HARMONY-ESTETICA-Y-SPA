@@ -11,7 +11,6 @@ import ModalCalendario from '../components/Especialistas/ModalCalendario';
 import ModalReporteGlobal from '../components/Especialistas/ModalReporteGlobal';
 import ModalHistorialEmpleado from '../components/Especialistas/ModalHistorialEmpleado';
 import BookingModal from '../components/Modals/BookingModal';
-// 1. IMPORTA EL MODAL DESDE LA CARPETA MODALS
 import ModalPassword from '../components/Modals/ModalPassword';
 
 const AlertaPersonalizada = ({ mensaje, alCerrar }) => (
@@ -63,6 +62,14 @@ export default function Equipo() {
   const [confirmarEliminar, setConfirmarEliminar] = useState({ visible: false, empleado: null });
   const [passwordModalAbierto, setPasswordModalAbierto] = useState(false);
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const obtenerEspecialistas = async () => {
     const { data, error } = await supabase.from('users').select('*').eq('rol', 'EMPLEADO');
     if (!error) setListaEspecialistas(data || []);
@@ -79,6 +86,27 @@ export default function Equipo() {
 
   const guardarEmpleado = async (datos) => {
     try {
+      // VALIDACIÓN DE CAMBIOS REALES
+      if (especialistaAEditar) {
+        const huboCambios = 
+          datos.nombre !== (especialistaAEditar.nombre || '') ||
+          datos.apellido !== (especialistaAEditar.apellido || '') ||
+          datos.dni !== (especialistaAEditar.dni || '') ||
+          datos.especialidad !== (especialistaAEditar.especialidad || '') ||
+          datos.email.trim().toLowerCase() !== (especialistaAEditar.email || '').trim().toLowerCase() ||
+          datos.telefono !== (especialistaAEditar.telefono || '') ||
+          datos.activo !== (especialistaAEditar.activo ?? true) ||
+          datos.foto_url !== (especialistaAEditar.foto_url || '');
+
+        if (!huboCambios) {
+          setAlerta({ 
+            visible: true, 
+            mensaje: "No se detectaron cambios para actualizar. Modificá algún campo o cancelá la edición." 
+          });
+          return; // No se cierra el modal, cortamos ejecución
+        }
+      }
+
       const payload = {
         nombre: datos.nombre,
         apellido: datos.apellido,
@@ -87,7 +115,7 @@ export default function Equipo() {
         email: datos.email.trim().toLowerCase(),
         telefono: datos.telefono,
         activo: datos.activo,
-        foto_url: datos.foto_url, // <--- CORREGIDO: Usar foto_url que viene del modal
+        foto_url: datos.foto_url,
         rol: 'EMPLEADO'
       };
 
@@ -99,23 +127,20 @@ export default function Equipo() {
         if (error && error.code !== '23505' && error.status !== 409) throw error;
       }
 
+      // ÉXITO: Recargamos lista, cerramos modal y avisamos
       await obtenerEspecialistas(); 
+      setFormAbierto(false); 
+      setEspecialistaAEditar(null);
+      
       setAlerta({ 
         visible: true, 
-        mensaje: especialistaAEditar ? "✨ Perfil actualizado." : "✨ Especialista registrado." 
+        mensaje: especialistaAEditar ? "✨ Perfil actualizado con éxito." : "✨ Especialista registrado." 
       });
     } catch (error) {
       console.error("Error guardando:", error);
-      await obtenerEspecialistas();
-    
-    setAlerta({ 
-      visible: true, 
-      mensaje: especialistaAEditar 
-        ? "✨ Perfil actualizado correctamente." 
-        : "✨ Especialista registrado exitosamente en el staff."
-    });
-  }
-};
+      setAlerta({ visible: true, mensaje: "Error al procesar la solicitud: " + error.message });
+    }
+  };
 
   const ejecutarEliminacion = async () => {
     const id = confirmarEliminar.empleado.id;
@@ -137,11 +162,23 @@ export default function Equipo() {
   }, [listaEspecialistas, isAdmin, esEmpleado]);
 
   return (
-    <main style={{ backgroundColor: '#fcfaf7', minHeight: '100vh', padding: '100px 20px 60px' }}>
+    <main style={{ 
+      backgroundColor: '#fcfaf7', 
+      minHeight: '100vh', 
+      padding: isMobile ? '80px 15px 60px' : '100px 20px 60px' 
+    }}>
       <p style={styles.subtituloLabel}>PROFESIONALES A TU SERVICIO</p>
-      <h2 style={styles.tituloPrincipal}>Nuestro Equipo</h2>
+      <h2 style={{
+        ...styles.tituloPrincipal,
+        fontSize: isMobile ? '1.8rem' : '2.5rem'
+      }}>Nuestro Equipo</h2>
       
-      <div style={styles.gridCards}>
+      <div style={{
+        ...styles.gridCards,
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: 'center',
+        gap: isMobile ? '40px' : '30px'
+      }}>
         {especialistasAMostrar.map(esp => (
           <CardEspecialista 
             key={esp.id} 
@@ -199,18 +236,18 @@ export default function Equipo() {
         />
       )}
 
-      {/* 4. RENDERIZA EL MODAL DE PASSWORD AL FINAL */}
       {passwordModalAbierto && (
-        <ModalPassword 
-          alCerrar={() => setPasswordModalAbierto(false)} 
-          setAlertaPadre={setAlerta} 
-        />
+        <ModalPassword alCerrar={() => setPasswordModalAbierto(false)} setAlertaPadre={setAlerta} />
       )}
 
       {alerta.visible && <AlertaPersonalizada mensaje={alerta.mensaje} alCerrar={() => setAlerta({visible: false, mensaje: ""})} />}
       
       {isAdmin && (
-        <div style={styles.fabContainer}>
+        <div style={{
+          ...styles.fabContainer,
+          left: isMobile ? '20px' : '30px',
+          bottom: isMobile ? '20px' : '30px'
+        }}>
           <button style={styles.btnReporte} onClick={() => setReporteAbierto(true)}>📊 REPORTE GLOBAL</button>
           <button style={styles.btnAñadir} onClick={() => setFormAbierto(true)}>+</button>
         </div>
@@ -221,13 +258,13 @@ export default function Equipo() {
 
 const styles = {
   subtituloLabel: { textAlign: 'center', color: '#bfa38a', letterSpacing: '3px', fontSize: '0.7rem', marginBottom: '10px', textTransform: 'uppercase' },
-  tituloPrincipal: { textAlign: 'center', color: '#8c6d4f', marginBottom: '40px', fontSize: '2.5rem', fontFamily: "'Playfair Display', serif" },
-  gridCards: { display: 'flex', gap: '30px', justifyContent: 'center', flexWrap: 'wrap' },
-  fabContainer: { position: 'fixed', bottom: '30px', left: '30px', display: 'flex', flexDirection: 'column', gap: '15px', zIndex: 1000 },
+  tituloPrincipal: { textAlign: 'center', color: '#8c6d4f', marginBottom: '40px', fontFamily: "'Playfair Display', serif" },
+  gridCards: { display: 'flex', justifyContent: 'center', flexWrap: 'wrap' },
+  fabContainer: { position: 'fixed', display: 'flex', flexDirection: 'column', gap: '15px', zIndex: 1000 },
   btnReporte: { backgroundColor: '#fff', color: '#8c6d4f', border: '1px solid #f2e9e1', padding: '12px 20px', borderRadius: '25px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' },
   btnAñadir: { backgroundColor: '#c5a37d', color: 'white', border: 'none', width: '55px', height: '55px', borderRadius: '50%', fontSize: '2rem', cursor: 'pointer', boxShadow: '0 6px 20px rgba(197, 163, 125, 0.4)' },
   alertOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000, backdropFilter: 'blur(5px)' },
-  alertModal: { backgroundColor: '#fff', padding: '40px', borderRadius: '30px', width: '380px', textAlign: 'center', border: '1px solid #f2e9e1', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' },
+  alertModal: { backgroundColor: '#fff', padding: '40px', borderRadius: '30px', width: '90%', maxWidth: '380px', textAlign: 'center', border: '1px solid #f2e9e1', boxShadow: '0 20px 50px rgba(0,0,0,0.1)' },
   alertIcon: { width: '50px', height: '50px', borderRadius: '50%', border: '2px solid #c5a37d', color: '#c5a37d', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 20px', fontSize: '24px' },
   alertTitle: { color: '#8c6d4f', fontFamily: "'Playfair Display', serif", fontSize: '1.6rem', marginBottom: '10px' },
   alertText: { color: '#bfa38a', fontSize: '0.95rem', marginBottom: '20px', lineHeight: '1.5' },
