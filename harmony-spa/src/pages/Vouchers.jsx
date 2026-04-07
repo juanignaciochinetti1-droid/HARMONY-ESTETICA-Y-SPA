@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // useRef añadido
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 
@@ -7,7 +7,16 @@ import ModalFormularioVoucher from '../components/Vouchers/ModalFormularioVouche
 import ModalCompraVoucher from '../components/Vouchers/ModalCompraVoucher';
 import ModalReporteVouchers from '../components/Vouchers/ModalReporteVouchers';
 
-// --- COMPONENTE INTERNO: MODAL DE AVISOS (GENÉRICO) ---
+// --- SUB-COMPONENTE SKELETON VOUCHER ---
+const SkeletonVoucher = () => (
+  <div style={styles.skeletonCard}>
+    <div style={styles.skeletonTitle}></div>
+    <div style={styles.skeletonBody}></div>
+    <div style={styles.skeletonFooter}></div>
+  </div>
+);
+
+// --- COMPONENTE INTERNO: MODAL DE AVISOS ---
 const ModalAviso = ({ icono, titulo, texto, botonTexto, alCerrar, esConfirmacion, alConfirmar }) => (
   <div style={styles.alertOverlay}>
     <div style={styles.alertModal}>
@@ -39,11 +48,11 @@ export default function Vouchers() {
   const [voucherSeleccionado, setVoucherSeleccionado] = useState(null);
   const [voucherAEditar, setVoucherAEditar] = useState(null);
 
-  // --- ESTADOS PARA ALERTAS ---
   const [confirmarEliminar, setConfirmarEliminar] = useState({ visible: false, voucher: null });
   const [avisoSinCambios, setAvisoSinCambios] = useState(false);
 
   const isAdmin = profile?.rol === 'ADMIN';
+  const domRef = useRef(); // Ref para animación
 
   const obtenerVouchers = async () => {
     try {
@@ -59,7 +68,19 @@ export default function Vouchers() {
 
   useEffect(() => { obtenerVouchers(); }, []);
 
-  // --- GUARDAR / EDITAR CON VALIDACIÓN ---
+  // Efecto para observar el scroll (Fade-up)
+  useEffect(() => {
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1 });
+    if (domRef.current) observer.observe(domRef.current);
+    return () => { if (domRef.current) observer.unobserve(domRef.current); };
+  }, [cargandoDatos]);
+
   const guardarVoucher = async (datos) => {
     try {
       const payload = {
@@ -70,7 +91,6 @@ export default function Vouchers() {
       };
 
       if (voucherAEditar) {
-        // Validación: ¿Son los mismos datos?
         const noHuboCambios = 
           voucherAEditar.nombre === payload.nombre &&
           Number(voucherAEditar.precio) === payload.precio &&
@@ -79,7 +99,7 @@ export default function Vouchers() {
 
         if (noHuboCambios) {
           setAvisoSinCambios(true);
-          return; // No hace el update
+          return;
         }
 
         const { error } = await supabase.from('vouchers_web').update(payload).eq('id', voucherAEditar.id);
@@ -97,7 +117,6 @@ export default function Vouchers() {
     }
   };
 
-  // --- ELIMINACIÓN ---
   const borrarVoucherReal = async () => {
     const id = confirmarEliminar.voucher.id;
     const { error } = await supabase.from('vouchers_web').delete().eq('id', id);
@@ -112,33 +131,38 @@ export default function Vouchers() {
   }
 
   return (
-    <main style={{ backgroundColor: '#f5eee6', minHeight: '100vh', padding: '100px 20px 80px' }}>
-      <p style={styles.subtituloLabel}>REGALA BIENESTAR</p>
-      <h2 style={styles.tituloPrincipal}>Vouchers de Regalo</h2>
+    <div style={{ backgroundColor: '#f5eee6', minHeight: '100vh' }}>
+      
+      {/* 1. CONTENIDO CON ANIMACIÓN */}
+      <main ref={domRef} className="fade-up" style={{ padding: '100px 20px 80px' }}>
+        <p style={styles.subtituloLabel}>REGALA BIENESTAR</p>
+        <h2 style={styles.tituloPrincipal}>Vouchers de Regalo</h2>
 
-      {cargandoDatos ? (
-        <p style={{ textAlign: 'center', color: '#bfa38a' }}>Cargando catálogo...</p>
-      ) : (
         <div style={styles.gridCards}>
-          {listaVouchers.map(v => (
-            <CardVoucher 
-              key={v.id} 
-              voucher={v} 
-              isAdmin={isAdmin}
-              alComprar={() => { setVoucherSeleccionado(v); setCompraAbierta(true); }}
-              alEditar={() => { setVoucherAEditar(v); setFormAbierto(true); }}
-              alBorrar={() => setConfirmarEliminar({ visible: true, voucher: v })}
-            />
-          ))}
+          {cargandoDatos ? (
+            // MOSTRAMOS SKELETONS
+            [1, 2, 3].map(n => <SkeletonVoucher key={n} />)
+          ) : (
+            listaVouchers.map(v => (
+              <CardVoucher 
+                key={v.id} 
+                voucher={v} 
+                isAdmin={isAdmin}
+                alComprar={() => { setVoucherSeleccionado(v); setCompraAbierta(true); }}
+                alEditar={() => { setVoucherAEditar(v); setFormAbierto(true); }}
+                alBorrar={() => setConfirmarEliminar({ visible: true, voucher: v })}
+              />
+            ))
+          )}
         </div>
-      )}
+      </main>
 
-      {/* --- MODAL: CONFIRMACIÓN DE ELIMINACIÓN --- */}
+      {/* 2. MODALES FUERA DEL FLUJO ANIMADO */}
       {confirmarEliminar.visible && (
         <ModalAviso 
           icono="!"
           titulo="¿Estás seguro?"
-          texto={`Estás por eliminar "${confirmarEliminar.voucher.nombre}". Esta acción no se puede deshacer.`}
+          texto={`Estás por eliminar "${confirmarEliminar.voucher.nombre}".`}
           botonTexto="ELIMINAR"
           esConfirmacion={true}
           alCerrar={() => setConfirmarEliminar({ visible: false, voucher: null })}
@@ -146,12 +170,11 @@ export default function Vouchers() {
         />
       )}
 
-      {/* --- MODAL: AVISO SIN CAMBIOS --- */}
       {avisoSinCambios && (
         <ModalAviso 
           icono="i"
           titulo="Sin cambios"
-          texto="Para actualizar este voucher, debes modificar al menos un dato (nombre, precio, beneficios o pie de página)."
+          texto="Para actualizar este voucher, debes modificar al menos un dato."
           botonTexto="ENTENDIDO"
           esConfirmacion={false}
           alCerrar={() => setAvisoSinCambios(false)}
@@ -159,6 +182,7 @@ export default function Vouchers() {
       )}
 
       {compraAbierta && <ModalCompraVoucher voucher={voucherSeleccionado} alCerrar={() => setCompraAbierta(false)} />}
+      
       {formAbierto && (
         <ModalFormularioVoucher 
           alCerrar={() => { setFormAbierto(false); setVoucherAEditar(null); }} 
@@ -166,6 +190,7 @@ export default function Vouchers() {
           voucherAEditar={voucherAEditar} 
         />
       )}
+      
       {reporteAbierto && <ModalReporteVouchers alCerrar={() => setReporteAbierto(false)} />}
 
       {isAdmin && (
@@ -174,7 +199,27 @@ export default function Vouchers() {
           <button style={styles.btnAñadir} onClick={() => setFormAbierto(true)}>+</button>
         </div>
       )}
-    </main>
+
+      {/* ESTILOS DE ANIMACIÓN */}
+      <style>
+        {`
+          @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+          }
+          .fade-up {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease-out;
+          }
+          .fade-up.visible {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        `}
+      </style>
+    </div>
   );
 }
 
@@ -182,12 +227,18 @@ const styles = {
   subtituloLabel: { textAlign: 'center', color: '#bfa38a', letterSpacing: '3px', fontSize: '0.7rem', marginBottom: '10px', textTransform: 'uppercase' },
   tituloPrincipal: { textAlign: 'center', color: '#1a1a1a', marginBottom: '50px', fontWeight: '300', fontSize: '2.5rem', fontFamily: "'Playfair Display', serif" },
   gridCards: { display: 'flex', gap: '30px', justifyContent: 'center', flexWrap: 'wrap' },
+  
+  // --- ESTILOS SKELETON VOUCHER ---
+  skeletonCard: { width: '320px', height: '450px', backgroundColor: '#fff', borderRadius: '40px', padding: '40px', display: 'flex', flexDirection: 'column', gap: '20px', border: '1px solid #f2e9e1', boxSizing: 'border-box' },
+  skeletonTitle: { width: '80%', height: '30px', backgroundColor: '#f5f0eb', borderRadius: '15px', animation: 'pulse 1.5s infinite' },
+  skeletonBody: { width: '100%', height: '200px', backgroundColor: '#f5f0eb', borderRadius: '15px', animation: 'pulse 1.5s infinite' },
+  skeletonFooter: { width: '100%', height: '50px', backgroundColor: '#f5f0eb', borderRadius: '25px', marginTop: 'auto', animation: 'pulse 1.5s infinite' },
+
   fabContainer: { position: 'fixed', bottom: '30px', left: '30px', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '15px' },
   btnReporte: { backgroundColor: '#fff', color: '#8c6d4f', border: '1px solid #c5a37d', padding: '10px 20px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', letterSpacing: '1px' },
   btnAñadir: { backgroundColor: '#c5a37d', color: 'white', border: 'none', width: '55px', height: '55px', borderRadius: '50%', fontSize: '2rem', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' },
   
-  // --- Estilos de Alerta Unificados ---
-  alertOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000, backdropFilter: 'blur(5px)' },
+  alertOverlay: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 20000, backdropFilter: 'blur(5px)' },
   alertModal: { backgroundColor: '#fff', padding: '35px', borderRadius: '40px', width: '380px', textAlign: 'center', border: '1px solid #f2e9e1', boxShadow: '0 20px 50px rgba(0,0,0,0.15)' },
   alertIcon: { width: '60px', height: '60px', borderRadius: '50%', border: '2px solid #c5a37d', color: '#c5a37d', display: 'flex', justifyContent: 'center', alignItems: 'center', margin: '0 auto 20px', fontSize: '30px', fontWeight: 'bold' },
   alertTitle: { color: '#8c6d4f', fontFamily: "'Playfair Display', serif", fontSize: '1.6rem', marginBottom: '10px' },

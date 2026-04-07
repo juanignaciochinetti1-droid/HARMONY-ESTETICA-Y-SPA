@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom'; // Cambiamos Link por NavLink
 import { useAuth } from '../../context/AuthContext'; 
 
 const Navbar = ({ onLoginClick }) => { 
@@ -22,6 +22,15 @@ const Navbar = ({ onLoginClick }) => {
   const userRole = profile?.rol;
 
   const cerrarMenu = () => setMenuAbierto(false);
+
+  // --- Función para aplicar estilos dinámicos al Link activo ---
+  const activeStyle = ({ isActive }) => ({
+    ...styles.linkStyle,
+    color: isActive ? '#8c6d4f' : '#a6835a', // Color más oscuro si está activo
+    fontWeight: isActive ? '700' : '500',
+    borderBottom: isActive ? '2px solid #c5a37d' : '2px solid transparent',
+    paddingBottom: '5px'
+  });
 
   return (
     <nav style={styles.nav}>
@@ -52,11 +61,11 @@ const Navbar = ({ onLoginClick }) => {
         ...styles.menu,
         ...(isMobile ? (menuAbierto ? styles.menuMobileOpen : styles.menuMobileClosed) : {})
       }}>
-        <li style={styles.menuItem}><Link to="/" style={styles.linkStyle} onClick={cerrarMenu}>INICIO</Link></li>
-        <li style={styles.menuItem}><Link to="/servicios" style={styles.linkStyle} onClick={cerrarMenu}>SERVICIOS</Link></li>
-        <li style={styles.menuItem}><Link to="/equipo" style={styles.linkStyle} onClick={cerrarMenu}>EQUIPO</Link></li>
-        <li style={styles.menuItem}><Link to="/vouchers" style={styles.linkStyle} onClick={cerrarMenu}>VOUCHERS</Link></li>
-        <li style={styles.menuItem}><Link to="/mis-turnos" style={styles.linkStyle} onClick={cerrarMenu}>MIS TURNOS</Link></li>
+        <li style={styles.menuItem}><NavLink to="/" style={activeStyle} onClick={cerrarMenu}>INICIO</NavLink></li>
+        <li style={styles.menuItem}><NavLink to="/servicios" style={activeStyle} onClick={cerrarMenu}>SERVICIOS</NavLink></li>
+        <li style={styles.menuItem}><NavLink to="/equipo" style={activeStyle} onClick={cerrarMenu}>EQUIPO</NavLink></li>
+        <li style={styles.menuItem}><NavLink to="/vouchers" style={activeStyle} onClick={cerrarMenu}>VOUCHERS</NavLink></li>
+        <li style={styles.menuItem}><NavLink to="/mis-turnos" style={activeStyle} onClick={cerrarMenu}>MIS TURNOS</NavLink></li>
 
         <li style={styles.menuItem}>
           <a href="https://www.instagram.com/harmony.maguiveron" target="_blank" rel="noopener noreferrer" style={styles.linkStyle} onClick={cerrarMenu}>
@@ -65,15 +74,13 @@ const Navbar = ({ onLoginClick }) => {
         </li>
 
         {userRole === 'ADMIN' && (
-          <li style={{...styles.menuItem, fontWeight: 'bold'}}>
-            <Link to="/admin" style={{...styles.linkStyle, color: '#8c6d4f'}} onClick={cerrarMenu}>
+          <li style={{...styles.menuItem}}>
+            <NavLink to="/admin" style={activeStyle} onClick={cerrarMenu}>
               PANEL DE AVISOS 
-            </Link>
+            </NavLink>
           </li>
         )}
         
-        {/* --- SECCIÓN DE USUARIO INTEGRADA AL MENÚ --- */}
-        {/* Esto ahora es un <li> más del <ul>, por lo que hereda el ocultamiento del menú mobile */}
         <li style={isMobile ? styles.liUserMobile : styles.liUserPC}>
           {profile ? (
             <div style={isMobile ? styles.userFlexMobile : styles.userFlexPC}>
@@ -101,7 +108,7 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '15px 5%',
-    backgroundColor: '#fff',
+    backgroundColor: '#fcfaf7', // Fondo crema suave (Estilo Harmony)
     borderBottom: '1px solid #f2e9e1',
     position: 'sticky',
     top: 0,
@@ -132,13 +139,12 @@ const styles = {
     zIndex: 1001
   },
 
-  // --- LOGICA DE VISIBILIDAD ---
   menuMobileClosed: {
     position: 'fixed',
     top: '70px',
     right: '-100%', 
     flexDirection: 'column',
-    backgroundColor: '#fff',
+    backgroundColor: '#fcfaf7',
     width: '100%',
     height: 'calc(100vh - 70px)',
     padding: '40px',
@@ -151,7 +157,7 @@ const styles = {
     top: '70px',
     right: '0', 
     flexDirection: 'column',
-    backgroundColor: '#fff',
+    backgroundColor: '#fcfaf7',
     width: '100%',
     height: 'calc(100vh - 70px)',
     padding: '40px',
@@ -162,10 +168,9 @@ const styles = {
     overflowY: 'auto'
   },
 
-  menuItem: { fontSize: '0.75rem', color: '#a6835a', cursor: 'pointer', letterSpacing: '1px', fontWeight: '500' },
-  linkStyle: { textDecoration: 'none', color: 'inherit', display: 'block' },
+  menuItem: { fontSize: '0.75rem', cursor: 'pointer', letterSpacing: '1px' },
+  linkStyle: { textDecoration: 'none', color: '#a6835a', display: 'block', transition: 'all 0.3s ease' },
 
-  // --- ESTILOS USUARIO / LOGIN ---
   liUserPC: { marginLeft: '10px' },
   liUserMobile: { width: '100%', borderTop: '1px solid #f2e9e1', paddingTop: '20px' },
   
@@ -183,14 +188,15 @@ const styles = {
   loginText: { fontSize: '0.7rem', fontWeight: 'bold', letterSpacing: '1px' },
 
   btnSalir: { 
-    background: '#fdfcfb', 
+    background: '#fff', 
     border: '1px solid #f2e9e1', 
     color: '#8c6d4f', 
     fontSize: '0.7rem', 
     padding: '8px 15px', 
     borderRadius: '20px', 
     cursor: 'pointer',
-    fontWeight: 'bold'
+    fontWeight: 'bold',
+    boxShadow: '0 2px 5px rgba(0,0,0,0.02)'
   }
 };
 

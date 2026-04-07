@@ -1,11 +1,41 @@
-/* Animación para la barra de progreso */
+/* 1. RESET GLOBAL: Elimina franjas blancas en los bordes */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+  background-color: #fcfaf7; /* El color crema de Harmony */
+}
+
+/* 2. ANIMACIONES EXISTENTES */
+
+/* Barra de carga para el modal de offline */
 @keyframes loadingProgress {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(0); }
 }
 
-/* Animación de entrada para el modal */
+/* Entrada suave de modales */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* Efecto de latido para los Skeletons */
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* 3. CLASES DE ANIMACIÓN */
+.fade-up {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.8s ease-out;
+}
+
+.fade-up.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
