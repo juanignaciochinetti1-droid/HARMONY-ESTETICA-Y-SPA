@@ -11,10 +11,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { useAuth } from './context/AuthContext';
 import Admin from './pages/Admin';
 
-// --- 1. COMPONENTE DE ALERTA DE CONEXIÓN (PANTALLA COMPLETA) ---
+// --- COMPONENTE DE ALERTA ---
 const OfflineAlert = ({ visible }) => {
   if (!visible) return null;
-
   return (
     <div style={styles.overlayOffline}>
       <div style={styles.modalOffline}>
@@ -42,14 +41,9 @@ const OfflineAlert = ({ visible }) => {
 };
 
 function App() {
-  const { profile, loading, signOut } = useAuth();
+  const { profile, signOut } = useAuth();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
-  
-  // --- 2. LÓGICA DE DETECCIÓN DE RED Y RESPONSIVE ---
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
-  // --- ESTADO PARA RESPONSIVE GLOBAL ---
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -57,57 +51,63 @@ function App() {
     const handleOffline = () => setIsOffline(true);
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
 
+    // Verificación real de internet (petición pequeña)
+    const verificarConexionReal = async () => {
+      try {
+        await fetch('https://www.google.com/favicon.ico', { 
+          mode: 'no-cors', 
+          cache: 'no-store' 
+        });
+        if (isOffline) setIsOffline(false);
+      } catch (err) {
+        if (!isOffline) setIsOffline(true);
+      }
+    };
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     window.addEventListener('resize', handleResize);
+
+    const intervalo = setInterval(verificarConexionReal, 5000);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('resize', handleResize);
+      clearInterval(intervalo);
     };
-  }, []);
+  }, [isOffline]);
 
   return (
-    <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden' }}>
+    <div style={{ position: 'relative', minHeight: '100vh', overflowX: 'hidden', backgroundColor: '#fcfaf7' }}>
       
-      {/* 3. CARTEL DE CONEXIÓN GLOBAL */}
+      {/* EL CARTEL DE BLOQUEO */}
       <OfflineAlert visible={isOffline} />
 
-      <Navbar onLoginClick={() => setIsLoginOpen(true)} userRole={profile?.rol} onLogout={signOut} />
-      
-      {/* 4. CONTENEDOR PRINCIPAL: BLOQUEO ANTI-ERRORES Y ADAPTACIÓN MÓVIL */}
+      {/* CONTENIDO DE LA APP */}
       <div style={{ 
         opacity: isOffline ? 0.3 : 1, 
         pointerEvents: isOffline ? 'none' : 'auto', 
-        filter: isOffline ? 'grayscale(0.4) blur(4px)' : 'none',
-        transition: 'all 0.6s ease',
-        padding: isMobile ? '0 10px' : '0' 
+        filter: isOffline ? 'grayscale(0.5) blur(5px)' : 'none',
+        transition: 'all 0.6s ease'
       }}>
-        <Routes>
-          {/* RUTAS PÚBLICAS */}
-          <Route path="/" element={<Home />} />
-          <Route path="/equipo" element={<Equipo />} />
-          <Route path="/servicios" element={<Servicios />} />
-          <Route path="/vouchers" element={<Vouchers />} />
-          <Route path="/mis-turnos" element={<MisTurnos />} />
-
-          {/* RUTAS PROTEGIDAS */}
-          <Route path="/agenda" element={
-            <ProtectedRoute>
-              <div style={styles.protectedSection}><h2>Agenda de Turnos</h2></div>
-            </ProtectedRoute>
-          } />
-          
-          {/* RUTA DE ADMINISTRACIÓN */}
-          <Route path="/admin" element={
-            <ProtectedRoute roleRequired="ADMIN">
-              <Admin />
-            </ProtectedRoute>
-          } />
-
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Navbar onLoginClick={() => setIsLoginOpen(true)} userRole={profile?.rol} onLogout={signOut} />
+        
+        <div style={{ padding: isMobile ? '0 10px' : '0' }}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/equipo" element={<Equipo />} />
+            <Route path="/servicios" element={<Servicios />} />
+            <Route path="/vouchers" element={<Vouchers />} />
+            <Route path="/mis-turnos" element={<MisTurnos />} />
+            <Route path="/admin" element={
+              <ProtectedRoute roleRequired="ADMIN">
+                <Admin />
+              </ProtectedRoute>
+            } />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
       </div>
 
       {isLoginOpen && <LoginModal alCerrar={() => setIsLoginOpen(false)} />}
@@ -115,75 +115,28 @@ function App() {
   );
 }
 
-// --- 5. ESTILOS INTEGRADOS ---
 const styles = {
   protectedSection: { paddingTop: '120px', textAlign: 'center', color: '#8c6d4f', fontFamily: 'serif' },
-  
   overlayOffline: {
     position: 'fixed',
-    top: 0,
-    left: 0,
-    width: '100vw',
-    height: '100vh',
-    backgroundColor: 'rgba(252, 250, 247, 0.85)', 
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 99999, 
-    backdropFilter: 'blur(10px)',
+    top: 0, left: 0, right: 0, bottom: 0,
+    width: '100vw', height: '100vh',
+    backgroundColor: 'rgba(252, 250, 247, 0.9)', 
+    display: 'flex', justifyContent: 'center', alignItems: 'center',
+    zIndex: 999999, 
+    backdropFilter: 'blur(8px)',
   },
   modalOffline: {
-    backgroundColor: '#fff',
-    padding: '50px 40px',
-    borderRadius: '40px',
-    width: '90%',
-    maxWidth: '450px',
-    textAlign: 'center',
-    boxShadow: '0 25px 60px rgba(140, 109, 79, 0.15)',
-    border: '1px solid #f2e9e1',
+    backgroundColor: '#fff', padding: '50px 40px', borderRadius: '40px',
+    width: '90%', maxWidth: '450px', textAlign: 'center',
+    boxShadow: '0 25px 60px rgba(140, 109, 79, 0.2)', border: '1px solid #f2e9e1',
   },
-  iconOffline: {
-    fontSize: '40px',
-    marginBottom: '20px',
-    filter: 'grayscale(1)',
-    opacity: 0.7
-  },
-  titleOffline: {
-    color: '#8c6d4f',
-    fontFamily: "'Playfair Display', serif",
-    fontSize: '2rem',
-    marginBottom: '15px',
-    fontWeight: '400'
-  },
-  textOffline: {
-    color: '#bfa38a',
-    fontSize: '1rem',
-    lineHeight: '1.6',
-    marginBottom: '30px',
-  },
-  loaderOffline: {
-    width: '100%',
-    height: '4px',
-    backgroundColor: '#f2e9e1',
-    borderRadius: '10px',
-    overflow: 'hidden',
-    position: 'relative',
-    marginBottom: '15px'
-  },
-  barOffline: {
-    width: '50%',
-    height: '100%',
-    backgroundColor: '#c5a37d',
-    borderRadius: '10px',
-    animation: 'loadingBar 1.5s infinite linear',
-  },
-  subtextOffline: {
-    color: '#d1c4b9',
-    fontSize: '0.75rem',
-    letterSpacing: '1px',
-    textTransform: 'uppercase',
-    fontWeight: 'bold'
-  }
+  iconOffline: { fontSize: '40px', marginBottom: '20px' },
+  titleOffline: { color: '#8c6d4f', fontFamily: "'Playfair Display', serif", fontSize: '2rem', marginBottom: '15px', fontWeight: '400' },
+  textOffline: { color: '#bfa38a', fontSize: '1rem', lineHeight: '1.6', marginBottom: '30px' },
+  loaderOffline: { width: '100%', height: '4px', backgroundColor: '#f2e9e1', borderRadius: '10px', overflow: 'hidden', position: 'relative', marginBottom: '15px' },
+  barOffline: { width: '50%', height: '100%', backgroundColor: '#c5a37d', borderRadius: '10px', animation: 'loadingBar 1.5s infinite linear' },
+  subtextOffline: { color: '#d1c4b9', fontSize: '0.75rem', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: 'bold' }
 };
 
 export default App;
