@@ -1,2 +1,2 @@
 # HARMONY-ESTETICA-Y-SPA
-Proyecto de pagina web
+Proyecto de pagina web.
